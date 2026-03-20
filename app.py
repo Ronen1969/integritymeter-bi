@@ -37,7 +37,7 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #FFFFFF; }
 [data-testid="stSidebar"] { background-color: #FFFFFF; border-right: 1px solid #F3F4F6; width: 400px !important; }
-.stButton>button { background-color: #8DAE10 !important; color: white !important; border-radius: 10px !important; height: 45px; font-weight: 600 !important; border: none !important; }
+.stButton>button { background-color: #8DAE10 !important; color: white !important; border-radius: 10px !important; min-height: 45px; height: auto; padding: 8px 16px !important; font-weight: 600 !important; border: none !important; white-space: normal !important; word-wrap: break-word !important; line-height: 1.4 !important; display: flex !important; align-items: center !important; justify-content: center !important; }
 .main-card { padding: 30px; border-radius: 16px; background-color: #FFFFFF; border: 1px solid #F3F4F6; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.02); }
 .delete-btn button { background-color: #EF4444 !important; font-size: 12px !important; height: 32px !important; padding: 0 8px !important; }
 .loaded-banner { padding: 10px 16px; border-radius: 8px; background-color: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; font-weight: 500; margin-bottom: 8px; }
