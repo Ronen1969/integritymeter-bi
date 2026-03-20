@@ -21,7 +21,6 @@ def get_supabase():
 
 @st.cache_resource
 def get_supabase_admin():
-    """Admin client with service_role key for user management."""
     if SUPABASE_SERVICE_KEY:
         return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     return None
@@ -37,17 +36,26 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #FFFFFF; }
 [data-testid="stSidebar"] { background-color: #FFFFFF; border-right: 1px solid #F3F4F6; width: 400px !important; }
-.stButton>button { background-color: #8DAE10 !important; color: white !important; border-radius: 10px !important; min-height: 45px; height: auto; padding: 8px 16px !important; font-weight: 600 !important; border: none !important; white-space: normal !important; word-wrap: break-word !important; line-height: 1.4 !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+.stButton>button {
+    background-color: #8DAE10 !important; color: white !important;
+    border-radius: 10px !important; min-height: 45px; height: auto;
+    padding: 10px 20px !important; font-weight: 600 !important;
+    border: none !important; white-space: normal !important;
+    line-height: 1.4 !important;
+}
 .main-card { padding: 30px; border-radius: 16px; background-color: #FFFFFF; border: 1px solid #F3F4F6; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.02); }
-.delete-btn button { background-color: #EF4444 !important; font-size: 12px !important; height: 32px !important; padding: 0 8px !important; }
+.sidebar-deal-btn button { font-size: 13px !important; min-height: 36px !important; padding: 6px 12px !important; text-align: left !important; }
+.sidebar-del-btn button { background-color: #EF4444 !important; min-height: 36px !important; max-height: 36px !important; padding: 4px 10px !important; font-size: 14px !important; }
 .loaded-banner { padding: 10px 16px; border-radius: 8px; background-color: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; font-weight: 500; margin-bottom: 8px; }
 .kpi-card { padding: 16px; border-radius: 12px; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; text-align: center; }
 .kpi-value { font-size: 28px; font-weight: 700; color: #8DAE10; margin: 4px 0; }
 .kpi-label { font-size: 11px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px; }
 .funnel-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
 .funnel-bar { height: 24px; border-radius: 4px; background: #8DAE10; display: flex; align-items: center; padding: 0 8px; color: white; font-size: 11px; font-weight: 600; }
-.login-container { max-width: 400px; margin: 80px auto; padding: 40px; border-radius: 16px; border: 1px solid #F3F4F6; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
 .user-badge { padding: 6px 12px; border-radius: 20px; background: #F0FDF4; color: #166534; font-size: 12px; font-weight: 600; display: inline-block; margin-bottom: 8px; }
+.tax-detail { background: #f8fafc; border-radius: 8px; padding: 12px; border: 1px solid #e2e8f0; margin: 8px 0; font-size: 13px; }
+.tax-row { display: flex; justify-content: space-between; padding: 4px 0; }
+.tax-total { border-top: 2px solid #8DAE10; margin-top: 6px; padding-top: 6px; font-weight: 700; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -63,7 +71,6 @@ def login(email, password):
     try:
         res = sb.auth.sign_in_with_password({"email": email, "password": password})
         st.session_state.user = res.user
-        # Load profile
         profile = sb.table('user_profiles').select('*').eq('id', res.user.id).execute()
         if profile.data:
             if not profile.data[0].get('is_active', True):
@@ -146,7 +153,7 @@ def get_live_fx():
         except:
             pass
         return rate
-    except:
+    except Exception as e:
         try:
             res = sb.table('fx_snapshots').select('rate').order('created_at', desc=True).limit(1).execute()
             if res.data: return float(res.data[0]['rate'])
@@ -166,14 +173,29 @@ def get_cached_fx():
     return get_live_fx()
 
 # ============================================================
-# 6. SESSION STATE
+# 6. SESSION STATE — form starts EMPTY
 # ============================================================
 if 'dolar_live' not in st.session_state:
     st.session_state.dolar_live = get_cached_fx()
-for key, default in [('selected_deal_id', None), ('form_client', ''), ('form_qty', 200),
-                      ('form_cost', 4.0), ('form_vreal', 14000.0), ('form_status_idx', 0),
-                      ('form_notes', ''), ('just_loaded', False)]:
+
+# Form defaults: completely empty for new entry
+FORM_DEFAULTS = {
+    'selected_deal_id': None,
+    'form_client': '',
+    'form_qty': 0,
+    'form_cost': 0.0,
+    'form_vreal': 0.0,
+    'form_status_idx': 0,
+    'form_notes': '',
+    'just_loaded': False,
+}
+for key, default in FORM_DEFAULTS.items():
     if key not in st.session_state:
+        st.session_state[key] = default
+
+def clear_form():
+    """Reset all form fields to empty defaults."""
+    for key, default in FORM_DEFAULTS.items():
         st.session_state[key] = default
 
 # ============================================================
@@ -206,11 +228,19 @@ with st.sidebar:
 
     st.markdown("---")
     st.subheader("Configurações Fiscais")
-    tax_p = st.number_input("Lucro Presumido (%)", value=16.33)
-    adm_p = st.number_input("Taxa Adm (%)", value=3.00)
+    tax_p = st.number_input("Lucro Presumido (%)", value=16.33, min_value=0.0, format="%.2f", key="tax_presumido")
+    adm_p = st.number_input("Taxa Administração (%)", value=2.50, min_value=0.0, format="%.2f", key="tax_admin")
+    total_tax_pct = tax_p + adm_p
+    st.caption(f"Total impostos: **{total_tax_pct:.2f}%**")
 
     st.markdown("---")
     st.caption("NEGÓCIOS SALVOS")
+
+    # New deal button
+    if st.button("➕ Novo Negócio", key="new_deal_btn", use_container_width=True):
+        clear_form()
+        st.rerun()
+
     try:
         deals_res = sb.table('deals').select('*, clients(name, notes)').order('updated_at', desc=True).execute()
         all_deals = deals_res.data or []
@@ -221,29 +251,38 @@ with st.sidebar:
         st.info("Nenhum negócio salvo.")
     else:
         for deal in all_deals:
-            col_load, col_del = st.columns([4, 1])
             cn = deal.get('clients', {}).get('name', '?') if deal.get('clients') else '?'
             sk = deal['status']
             dd = deal['created_at'][:10] if deal.get('created_at') else ''
 
-            if col_load.button(f"{status_emoji(sk)} {cn} | {dd}", key=f"btn_{deal['id']}"):
-                st.session_state.form_client = cn
-                st.session_state.form_qty = int(deal['qty'])
-                st.session_state.form_cost = float(deal['cost_usd'])
-                st.session_state.form_vreal = float(deal['v_real'])
-                st.session_state.form_status_idx = STATUS_KEYS.index(sk) if sk in STATUS_KEYS else 0
-                st.session_state.form_notes = (deal.get('clients', {}) or {}).get('notes', '') or ''
-                st.session_state.selected_deal_id = deal['id']
-                st.session_state.just_loaded = True
-                st.rerun()
+            col_load, col_del = st.columns([4, 1])
+            with col_load:
+                st.markdown("<div class='sidebar-deal-btn'>", unsafe_allow_html=True)
+                if st.button(f"{status_emoji(sk)} {cn} | {dd}", key=f"btn_{deal['id']}"):
+                    st.session_state.form_client = cn
+                    st.session_state.form_qty = int(deal['qty'])
+                    st.session_state.form_cost = float(deal['cost_usd'])
+                    st.session_state.form_vreal = float(deal['v_real'])
+                    st.session_state.form_status_idx = STATUS_KEYS.index(sk) if sk in STATUS_KEYS else 0
+                    st.session_state.form_notes = (deal.get('clients', {}) or {}).get('notes', '') or ''
+                    st.session_state.selected_deal_id = deal['id']
+                    st.session_state.just_loaded = True
+                    st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
 
             with col_del:
-                st.markdown("<div class='delete-btn'>", unsafe_allow_html=True)
-                if st.button("🗑️", key=f"del_{deal['id']}"):
-                    sb.table('deals').delete().eq('id', deal['id']).execute()
-                    if st.session_state.selected_deal_id == deal['id']:
-                        st.session_state.selected_deal_id = None
-                    st.rerun()
+                st.markdown("<div class='sidebar-del-btn'>", unsafe_allow_html=True)
+                if st.button("🗑️", key=f"del_{deal['id']}", help=f"Excluir {cn}"):
+                    try:
+                        # Delete deal events first (safety), then deal
+                        sb.table('deal_events').delete().eq('deal_id', deal['id']).execute()
+                        sb.table('deals').delete().eq('id', deal['id']).execute()
+                        if st.session_state.selected_deal_id == deal['id']:
+                            clear_form()
+                        st.toast(f"Negócio '{cn}' excluído!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao excluir: {e}")
                 st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================================
@@ -269,12 +308,15 @@ with tab_list[0]:
         status_deal = i2.selectbox("Status", STATUS_LABELS, index=st.session_state.form_status_idx)
         i3, i4 = st.columns(2)
         qty = i3.number_input("Qtd Testes", key="form_qty", min_value=0)
-        cost = i4.number_input("Custo (USD)", key="form_cost", min_value=0.0, format="%.2f")
-        v_real = st.number_input("Venda (R$)", key="form_vreal", min_value=0.0, format="%.2f")
+        cost = i4.number_input("Custo Unitário (USD)", key="form_cost", min_value=0.0, format="%.2f")
+        v_real = st.number_input("Valor de Venda (R$)", key="form_vreal", min_value=0.0, format="%.2f")
         notes = st.text_area("Notas", key="form_notes", height=68)
 
-    total_tax = (tax_p + adm_p) / 100
+    # --- CALCULATIONS ---
+    total_tax = total_tax_pct / 100
     custo_brl = qty * cost * st.session_state.dolar_live
+    imposto_presumido = v_real * (tax_p / 100)
+    imposto_admin = v_real * (adm_p / 100)
     impostos = v_real * total_tax
     profit = v_real - custo_brl - impostos
     margin = (profit / v_real * 100) if v_real > 0 else 0
@@ -284,27 +326,40 @@ with tab_list[0]:
     else: margin_color, profit_color = "#DC2626", "#DC2626"
 
     with col_out:
-        st.markdown(f"""<div class='main-card'>
-            <p style='color:#9CA3AF; font-size:12px;'>LUCRO LÍQUIDO</p>
-            <h1 style='color:{profit_color}; margin:0; font-size:42px;'>R$ {float(profit):,.2f}</h1>
-            <p style='color:{margin_color}; font-weight:600;'>{margin:.1f}% Margem Real</p>
-        </div>""", unsafe_allow_html=True)
+        # Only show results if there's actual data
+        if v_real > 0:
+            st.markdown(f"""<div class='main-card'>
+                <p style='color:#9CA3AF; font-size:12px;'>LUCRO LÍQUIDO</p>
+                <h1 style='color:{profit_color}; margin:0; font-size:42px;'>R$ {float(profit):,.2f}</h1>
+                <p style='color:{margin_color}; font-weight:600;'>{margin:.1f}% Margem Real</p>
+            </div>""", unsafe_allow_html=True)
+        else:
+            st.markdown("""<div class='main-card'>
+                <p style='color:#9CA3AF; font-size:12px;'>LUCRO LÍQUIDO</p>
+                <h1 style='color:#9CA3AF; margin:0; font-size:42px;'>R$ 0,00</h1>
+                <p style='color:#9CA3AF; font-weight:600;'>Preencha os dados para calcular</p>
+            </div>""", unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
-        with st.expander("📊 Detalhamento do Cálculo"):
+
+        # Tax breakdown — always visible
+        with st.expander("📊 Detalhamento do Cálculo", expanded=(v_real > 0)):
             st.markdown(f"""
 | Item | Valor |
 |---|---|
 | Custo Total (USD) | $ {qty * cost:,.2f} |
 | Câmbio USD→BRL | R$ {st.session_state.dolar_live:.3f} |
 | **Custo Total (BRL)** | **R$ {custo_brl:,.2f}** |
-| Impostos ({tax_p + adm_p:.2f}%) | R$ {impostos:,.2f} |
+| Lucro Presumido ({tax_p:.2f}%) | R$ {imposto_presumido:,.2f} |
+| Taxa Administração ({adm_p:.2f}%) | R$ {imposto_admin:,.2f} |
+| **Total Impostos ({total_tax_pct:.2f}%)** | **R$ {impostos:,.2f}** |
 | Venda (BRL) | R$ {v_real:,.2f} |
 | **Lucro Líquido** | **R$ {profit:,.2f}** |
 """)
+
         st.markdown("<br>", unsafe_allow_html=True)
         c1, c2 = st.columns(2)
-        if c1.button("💾 SALVAR OU ATUALIZAR"):
+        if c1.button("💾 SALVAR", use_container_width=True):
             if not client_name.strip():
                 st.error("Preencha o nome do cliente.")
             elif qty <= 0 or cost <= 0 or v_real <= 0:
@@ -329,23 +384,18 @@ with tab_list[0]:
                         sb.table('deals').update(deal_data).eq('id', st.session_state.selected_deal_id).execute()
                         if old_status and old_status != status_key:
                             sb.table('deal_events').insert({'deal_id': st.session_state.selected_deal_id, 'event_type': 'status_change', 'old_value': old_status, 'new_value': status_key}).execute()
+                        st.toast(f"Negócio '{client_name}' atualizado!")
                     else:
                         new_deal = sb.table('deals').insert(deal_data).execute()
-                        st.session_state.selected_deal_id = new_deal.data[0]['id']
                         sb.table('deal_events').insert({'deal_id': new_deal.data[0]['id'], 'event_type': 'created', 'new_value': status_key}).execute()
-                    st.success(f"Negócio '{client_name}' salvo!")
-                    # Clear form for next entry
-                    st.session_state.form_client = ''
-                    st.session_state.form_qty = 200
-                    st.session_state.form_cost = 4.0
-                    st.session_state.form_vreal = 14000.0
-                    st.session_state.form_status_idx = 0
-                    st.session_state.form_notes = ''
-                    st.session_state.selected_deal_id = None
+                        st.toast(f"Negócio '{client_name}' criado!")
+                    # Clear form after save
+                    clear_form()
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro: {e}")
-        if c2.button("📋 DUPLICAR"):
+
+        if c2.button("📋 DUPLICAR", use_container_width=True):
             st.session_state.selected_deal_id = None
             st.toast("Duplicado! Altere e salve como novo.")
 
@@ -451,7 +501,6 @@ if is_admin() and len(tab_list) > 3:
     with tab_list[3]:
         st.header("⚙️ Painel Administrativo")
 
-        # --- Create new user ---
         st.subheader("➕ Criar Novo Usuário")
         if not sb_admin:
             st.error("Service role key não configurada. Adicione SUPABASE_SERVICE_KEY nos secrets.")
@@ -472,13 +521,12 @@ if is_admin() and len(tab_list) > 3:
                                 "email_confirm": True,
                                 "user_metadata": {"full_name": nu_name, "role": nu_role}
                             })
-                            st.success(f"Usuário '{nu_name}' ({nu_email}) criado! Senha temporária: enviar ao funcionário.")
+                            st.success(f"Usuário '{nu_name}' ({nu_email}) criado!")
                         except Exception as e:
                             st.error(f"Erro: {e}")
                     else:
                         st.warning("Preencha todos os campos.")
 
-        # --- User list ---
         st.markdown("---")
         st.subheader("👥 Usuários Cadastrados")
         try:
@@ -495,7 +543,6 @@ if is_admin() and len(tab_list) > 3:
         except Exception as e:
             st.info(f"Carregando usuários... {e}")
 
-        # --- Activity log ---
         st.markdown("---")
         st.subheader("📜 Log de Atividades")
         try:
