@@ -301,8 +301,31 @@ for key, default in FORM_DEFAULTS.items():
         st.session_state[key] = default
 
 def clear_form():
+    """Schedule form clear for next rerun (avoids widget conflict)."""
+    st.session_state['_pending_clear'] = True
+
+def load_deal_to_form(deal):
+    """Schedule deal load for next rerun (avoids widget conflict)."""
+    st.session_state['_pending_load'] = deal
+
+# --- Process pending form operations BEFORE widgets render ---
+if st.session_state.get('_pending_clear', False):
     for key, default in FORM_DEFAULTS.items():
         st.session_state[key] = default
+    del st.session_state['_pending_clear']
+
+if '_pending_load' in st.session_state and st.session_state['_pending_load'] is not None:
+    _deal = st.session_state['_pending_load']
+    _cn = (_deal.get('clients', {}) or {}).get('name', '?')
+    st.session_state.form_client = _cn
+    st.session_state.form_qty = int(_deal['qty'])
+    st.session_state.form_cost = float(_deal['cost_usd'])
+    st.session_state.form_vreal = float(_deal['v_real'])
+    st.session_state.form_status_idx = STATUS_KEYS.index(_deal['status']) if _deal['status'] in STATUS_KEYS else 0
+    st.session_state.form_notes = (_deal.get('clients', {}) or {}).get('notes', '') or ''
+    st.session_state.selected_deal_id = _deal['id']
+    st.session_state.just_loaded = True
+    del st.session_state['_pending_load']
 
 # ============================================================
 # 7. LOAD ALL DEALS (used across tabs)
@@ -364,8 +387,8 @@ with st.sidebar:
 
     st.markdown("---")
     st.subheader("Configurações Fiscais")
-    tax_p = st.number_input("Lucro Presumido (%)", value=16.33, min_value=0.0, format="%.2f", key="tax_presumido")
-    adm_p = st.number_input("Taxa Administração (%)", value=2.50, min_value=0.0, format="%.2f", key="tax_admin")
+    tax_p = st.number_input("Lucro Presumido (%)", value=16.33, min_value=0.0, format="%.2f", key="tax_presumido", help="Alíquota do regime Lucro Presumido — imposto federal sobre o faturamento bruto")
+    adm_p = st.number_input("Taxa Administração (%)", value=2.50, min_value=0.0, format="%.2f", key="tax_admin", help="Taxa administrativa cobrada sobre o faturamento para custos operacionais")
     total_tax_pct = tax_p + adm_p
     st.caption(f"Total impostos: **{total_tax_pct:.2f}%**")
 
@@ -394,14 +417,7 @@ with st.sidebar:
             with col_load:
                 st.markdown("<div class='sidebar-deal-btn'>", unsafe_allow_html=True)
                 if st.button(f"{status_dot_text(sk)} {cn} | {dd}", key=f"btn_{deal['id']}"):
-                    st.session_state.form_client = cn
-                    st.session_state.form_qty = int(deal['qty'])
-                    st.session_state.form_cost = float(deal['cost_usd'])
-                    st.session_state.form_vreal = float(deal['v_real'])
-                    st.session_state.form_status_idx = STATUS_KEYS.index(sk) if sk in STATUS_KEYS else 0
-                    st.session_state.form_notes = (deal.get('clients', {}) or {}).get('notes', '') or ''
-                    st.session_state.selected_deal_id = deal['id']
-                    st.session_state.just_loaded = True
+                    load_deal_to_form(deal)
                     st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
 
@@ -580,13 +596,13 @@ with tab_list[1]:
     col_in, col_out = st.columns([1.8, 1], gap="large")
     with col_in:
         i1, i2 = st.columns(2)
-        client_name = i1.text_input("Cliente", key="form_client")
-        status_deal = i2.selectbox("Status", STATUS_LABELS, index=st.session_state.form_status_idx)
+        client_name = i1.text_input("Cliente", key="form_client", help="Nome da empresa ou pessoa jurídica contratante")
+        status_deal = i2.selectbox("Status", STATUS_LABELS, index=st.session_state.form_status_idx, help="Fase atual do negócio no pipeline de vendas")
         i3, i4 = st.columns(2)
-        qty = i3.number_input("Qtd Testes", key="form_qty", min_value=0)
-        cost = i4.number_input("Custo Unitário (USD)", key="form_cost", min_value=0.0, format="%.2f")
-        v_real = st.number_input("Valor de Venda (R$)", key="form_vreal", min_value=0.0, format="%.2f")
-        notes = st.text_area("Notas", key="form_notes", height=68)
+        qty = i3.number_input("Qtd Testes", key="form_qty", min_value=0, help="Quantidade de testes/avaliações a serem aplicados neste negócio")
+        cost = i4.number_input("Custo Unitário (USD)", key="form_cost", min_value=0.0, format="%.2f", help="Custo GA por teste pago ao fornecedor em dólares americanos")
+        v_real = st.number_input("Valor de Venda (R$)", key="form_vreal", min_value=0.0, format="%.2f", help="Valor total cobrado do cliente em reais brasileiros")
+        notes = st.text_area("Notas", key="form_notes", height=68, help="Observações internas sobre o negócio (não visível ao cliente)")
 
     total_tax = total_tax_pct / 100
     custo_brl = qty * cost * st.session_state.dolar_live
@@ -776,14 +792,14 @@ with tab_list[3]:
             e1, e2 = st.columns(2)
             with e1:
                 buf = io.StringIO(); disp.to_csv(buf, index=False)
-                st.download_button("BaixarCSV", buf.getvalue(), f"integrity_{date.today()}.csv", "text/csv")
+                st.download_button("Baixar CSV", buf.getvalue(), f"integrity_{date.today()}.csv", "text/csv")
             with e2:
                 try:
                     buf = io.BytesIO()
                     with pd.ExcelWriter(buf, engine='openpyxl') as w:
                         disp.to_excel(w, sheet_name='Todos', index=False)
                         g.to_excel(w, sheet_name=view, index=False)
-                    st.download_button("BaixarExcel", buf.getvalue(), f"integrity_{date.today()}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    st.download_button("Baixar Excel", buf.getvalue(), f"integrity_{date.today()}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 except ImportError:
                     st.warning("pip install openpyxl")
 
