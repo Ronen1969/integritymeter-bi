@@ -2,8 +2,34 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch, cm
 from reportlab.lib.colors import HexColor
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, HRFlowable
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, HRFlowable, Image as RLImage
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
+import os
+
+SCREENSHOTS_DIR = "/sessions/upbeat-intelligent-cori/screenshots"
+
+def add_screenshot(story, filename, caption=None, width=5.5*inch):
+    """Add a screenshot image to the story if the file exists."""
+    path = os.path.join(SCREENSHOTS_DIR, filename)
+    if os.path.exists(path):
+        from PIL import Image as PILImage
+        img = PILImage.open(path)
+        iw, ih = img.size
+        aspect = ih / iw
+        img_width = width
+        img_height = img_width * aspect
+        # Cap height
+        if img_height > 4*inch:
+            img_height = 4*inch
+            img_width = img_height / aspect
+        story.append(Spacer(1, 8))
+        story.append(RLImage(path, width=img_width, height=img_height))
+        if caption:
+            story.append(Paragraph(
+                f"<i>{caption}</i>",
+                ParagraphStyle('Caption', fontSize=9, textColor=HexColor('#6B7280'),
+                               alignment=TA_CENTER, spaceAfter=10, spaceBefore=4)))
+        story.append(Spacer(1, 8))
 
 GREEN = HexColor('#8DAE10')
 DARK = HexColor('#1F2937')
@@ -89,6 +115,8 @@ def create_manual(output_path):
     for i, step in enumerate(steps, 1):
         story.append(Paragraph(f"<b>{i}.</b> {step}", step_style))
 
+    add_screenshot(story, "01_login.png", "Tela de Login da plataforma", width=3.5*inch)
+
     story.append(Spacer(1, 10))
     story.append(Paragraph(
         "<b>Importante:</b> Altere sua senha temporária no primeiro acesso. "
@@ -102,6 +130,8 @@ def create_manual(output_path):
     story.append(Paragraph(
         "O Dashboard é a primeira tela após o login. Ele oferece uma visão geral "
         "completa do estado dos negócios.", body_style))
+
+    add_screenshot(story, "02_dashboard.png", "Dashboard — Painel Principal com KPIs e alertas")
 
     story.append(Paragraph("KPIs (Indicadores Chave):", h2_style))
     kpi_data = [
@@ -159,6 +189,8 @@ def create_manual(output_path):
     story.append(Paragraph("- Calcular o lucro líquido de cada negócio em tempo real.", step_style))
     story.append(Paragraph("- Considerar custos em USD, câmbio ao vivo e impostos brasileiros.", step_style))
     story.append(Paragraph("- Salvar negócios no banco de dados para acompanhamento.", step_style))
+
+    add_screenshot(story, "03_novo_negocio.png", "Aba Novo Negócio — formulário com tooltips e cálculo em tempo real")
 
     story.append(Spacer(1, 10))
     story.append(Paragraph("Como funciona:", h2_style))
@@ -258,6 +290,8 @@ def create_manual(output_path):
 
     story.append(Paragraph("O Pipeline mostra todos os negócios organizados por etapa.", body_style))
 
+    add_screenshot(story, "04_pipeline.png", "Pipeline — negócios organizados por etapa com filtros")
+
     story.append(Paragraph("Etapas do Pipeline:", h2_style))
     stages_data = [
         ['Etapa', 'Cor', 'Descrição'],
@@ -297,6 +331,9 @@ def create_manual(output_path):
     story.append(HRFlowable(width="100%", thickness=1, color=GREEN, spaceAfter=15))
 
     story.append(Paragraph("Três tipos de relatório disponíveis:", body_style))
+
+    add_screenshot(story, "05_relatorios.png", "Relatórios — KPIs, gráficos e exportação de dados")
+
     story.append(Spacer(1, 8))
 
     story.append(Paragraph("Negócios Concluídos:", h2_style))
@@ -326,6 +363,9 @@ def create_manual(output_path):
 
     story.append(Paragraph(
         "Acompanhe a evolução do câmbio USD/BRL com gráficos interativos.", body_style))
+
+    add_screenshot(story, "06_cambio.png", "Histórico de Câmbio — gráfico e simulação de impacto")
+
     story.append(Paragraph("- Visualize os últimos 7, 30 ou 90 dias.", step_style))
     story.append(Paragraph("- Veja mínimo, máximo e média do período.", step_style))
     story.append(Paragraph("- Simulação de impacto: como variações no câmbio afetam o lucro dos negócios ativos.", step_style))
@@ -343,6 +383,8 @@ def create_manual(output_path):
     story.append(Paragraph(
         "Disponível apenas para usuários com papel de <b>Administrador</b>. "
         "Permite gerenciar todos os usuários e acompanhar a atividade do sistema.", body_style))
+
+    add_screenshot(story, "07_admin.png", "Painel Admin — criar usuários e gerenciamento completo")
 
     story.append(Paragraph("Criar Usuários:", h2_style))
     story.append(Paragraph("1. Acesse a aba <b>Admin</b>.", step_style))
