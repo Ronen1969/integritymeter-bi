@@ -126,13 +126,13 @@ if not st.session_state.user:
 # 4. STATUS DEFINITIONS
 # ============================================================
 STATUS_CONFIG = {
-    'proposta_enviada':   {'label': 'Proposta Enviada',   'emoji': '📩', 'color': '#6B7280', 'order': 1},
-    'em_negociacao':      {'label': 'Em Negociação',      'emoji': '🤝', 'color': '#3B82F6', 'order': 2},
-    'aprovado':           {'label': 'Aprovado',           'emoji': '✅', 'color': '#10B981', 'order': 3},
-    'contrato_assinado':  {'label': 'Contrato Assinado',  'emoji': '📝', 'color': '#8B5CF6', 'order': 4},
-    'em_execucao':        {'label': 'Em Execução',        'emoji': '⚙️', 'color': '#F59E0B', 'order': 5},
-    'concluido':          {'label': 'Concluído',          'emoji': '🏆', 'color': '#059669', 'order': 6},
-    'perdido':            {'label': 'Perdido',            'emoji': '❌', 'color': '#EF4444', 'order': 7},
+    'proposta_enviada':   {'label': 'Proposta Enviada',   'color': '#6B7280', 'order': 1},
+    'em_negociacao':      {'label': 'Em Negociação',      'color': '#3B82F6', 'order': 2},
+    'aprovado':           {'label': 'Aprovado',           'color': '#10B981', 'order': 3},
+    'contrato_assinado':  {'label': 'Contrato Assinado',  'color': '#8B5CF6', 'order': 4},
+    'em_execucao':        {'label': 'Em Execução',        'color': '#F59E0B', 'order': 5},
+    'concluido':          {'label': 'Concluído',          'color': '#059669', 'order': 6},
+    'perdido':            {'label': 'Perdido',            'color': '#EF4444', 'order': 7},
 }
 STATUS_LABELS = [v['label'] for v in sorted(STATUS_CONFIG.values(), key=lambda x: x['order'])]
 STATUS_KEYS = [k for k in sorted(STATUS_CONFIG, key=lambda x: STATUS_CONFIG[x]['order'])]
@@ -142,7 +142,14 @@ def status_label_to_key(label):
     for k, v in STATUS_CONFIG.items():
         if v['label'] == label: return k
     return 'proposta_enviada'
-def status_emoji(key): return STATUS_CONFIG.get(key, {}).get('emoji', '📋')
+def status_dot(key):
+    """Return a small colored circle HTML span for the status."""
+    color = STATUS_CONFIG.get(key, {}).get('color', '#6B7280')
+    return f"<span style='display:inline-block;width:10px;height:10px;border-radius:50%;background:{color};margin-right:6px;'></span>"
+
+def status_dot_text(key):
+    """Return colored dot + label as plain text (for buttons)."""
+    return f"● {STATUS_CONFIG.get(key, {}).get('label', key)}"
 
 # ============================================================
 # 5. FX RATE
@@ -233,9 +240,9 @@ with st.sidebar:
     user_name = st.session_state.user_profile.get('full_name', '') or st.session_state.user.email
     user_role = st.session_state.user_profile.get('role', 'user')
     role_label = "Admin" if user_role == 'admin' else "Usuário"
-    st.markdown(f"<div class='user-badge'>👤 {user_name} ({role_label})</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='user-badge'>{user_name} ({role_label})</div>", unsafe_allow_html=True)
 
-    if st.button("🚪 Sair", key="logout_btn"):
+    if st.button("Sair", key="logout_btn"):
         logout()
         st.rerun()
 
@@ -243,7 +250,7 @@ with st.sidebar:
     st.caption("CÂMBIO EM TEMPO REAL")
     col_v, col_r = st.columns([2, 1])
     col_v.markdown(f"### R$ {st.session_state.dolar_live:.3f}")
-    if col_r.button("🔄", help="Atualizar câmbio"):
+    if col_r.button("Att.", help="Atualizar câmbio"):
         old = st.session_state.dolar_live
         st.session_state.dolar_live = get_live_fx()
         st.toast(f"Câmbio: R$ {st.session_state.dolar_live:.3f}" if st.session_state.dolar_live != old else "Câmbio já atualizado.")
@@ -258,12 +265,12 @@ with st.sidebar:
 
     st.markdown("---")
     st.caption("NEGÓCIOS SALVOS")
-    if st.button("➕ Novo Negócio", key="new_deal_btn", use_container_width=True):
+    if st.button("+ Novo Negócio", key="new_deal_btn", use_container_width=True):
         clear_form()
         st.rerun()
 
     # Search filter for deals
-    search_sidebar = st.text_input("🔍 Buscar cliente...", key="sidebar_search", placeholder="Nome do cliente")
+    search_sidebar = st.text_input("Buscar cliente...", key="sidebar_search", placeholder="Nome do cliente")
 
     filtered_deals = all_deals
     if search_sidebar:
@@ -280,7 +287,7 @@ with st.sidebar:
             col_load, col_del = st.columns([4, 1])
             with col_load:
                 st.markdown("<div class='sidebar-deal-btn'>", unsafe_allow_html=True)
-                if st.button(f"{status_emoji(sk)} {cn} | {dd}", key=f"btn_{deal['id']}"):
+                if st.button(f"{status_dot_text(sk)} {cn} | {dd}", key=f"btn_{deal['id']}"):
                     st.session_state.form_client = cn
                     st.session_state.form_qty = int(deal['qty'])
                     st.session_state.form_cost = float(deal['cost_usd'])
@@ -294,7 +301,7 @@ with st.sidebar:
 
             with col_del:
                 st.markdown("<div class='sidebar-del-btn'>", unsafe_allow_html=True)
-                if st.button("🗑️", key=f"del_{deal['id']}", help=f"Excluir {cn}"):
+                if st.button("X", key=f"del_{deal['id']}", help=f"Excluir {cn}"):
                     try:
                         sb.table('deal_events').delete().eq('deal_id', deal['id']).execute()
                         sb.table('deals').delete().eq('id', deal['id']).execute()
@@ -309,16 +316,16 @@ with st.sidebar:
 # ============================================================
 # 9. MAIN TABS
 # ============================================================
-tab_names = ["🏠 Dashboard", "🛡️ Calculadora", "📊 Pipeline", "📈 Relatórios", "💹 Câmbio"]
+tab_names = ["Dashboard", "Calculadora", "Pipeline", "Relatórios", "Câmbio"]
 if is_admin():
-    tab_names.append("⚙️ Admin")
+    tab_names.append("Admin")
 tab_list = st.tabs(tab_names)
 
 # ============================================================
 # TAB 0: DASHBOARD
 # ============================================================
 with tab_list[0]:
-    st.header("🏠 Painel Principal")
+    st.header("Painel Principal")
 
     if not all_deals:
         st.info("Bem-vindo! Comece adicionando seu primeiro negócio na aba Calculadora.")
@@ -362,7 +369,7 @@ with tab_list[0]:
         col_target, col_alerts = st.columns([1, 1], gap="large")
 
         with col_target:
-            st.subheader("🎯 Meta Mensal")
+            st.subheader("Meta Mensal")
             month_target = st.number_input("Meta de Vendas (R$)", value=100000.0, min_value=0.0, format="%.0f", key="month_target")
             month_won = df_won[df_won['created_at_dt'] >= month_start]['v_real'].sum() if not df_won.empty else 0
             month_profit = df_won[df_won['created_at_dt'] >= month_start]['profit'].sum() if not df_won.empty else 0
@@ -386,7 +393,7 @@ with tab_list[0]:
 
             # Monthly trend chart
             st.markdown("<br>", unsafe_allow_html=True)
-            st.subheader("📊 Tendência Mensal")
+            st.subheader("Tendência Mensal")
             df_all['month'] = df_all['created_at_dt'].dt.to_period('M').astype(str)
             monthly = df_all.groupby('month').agg(
                 Vendas=('v_real', 'sum'),
@@ -401,7 +408,7 @@ with tab_list[0]:
 
         # --- Alerts ---
         with col_alerts:
-            st.subheader("🔔 Alertas")
+            st.subheader("Alertas")
             alerts_found = False
 
             for deal in all_deals:
@@ -413,26 +420,26 @@ with tab_list[0]:
 
                 if age_days >= 14:
                     alerts_found = True
-                    st.markdown(f"<div class='alert-card alert-danger'>🚨 <strong>{cn}</strong> — {age_days} dias sem movimentação ({status_key_to_label(deal['status'])})</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='alert-card alert-danger'><strong>{cn}</strong> — {age_days} dias sem movimentação ({status_key_to_label(deal['status'])})</div>", unsafe_allow_html=True)
                 elif age_days >= 7:
                     alerts_found = True
-                    st.markdown(f"<div class='alert-card alert-warning'>⚠️ <strong>{cn}</strong> — {age_days} dias parado ({status_key_to_label(deal['status'])})</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='alert-card alert-warning'><strong>{cn}</strong> — {age_days} dias parado ({status_key_to_label(deal['status'])})</div>", unsafe_allow_html=True)
 
             # FX rate alert
             fx = st.session_state.dolar_live
             if fx >= 5.50:
                 alerts_found = True
-                st.markdown(f"<div class='alert-card alert-warning'>💹 Dólar alto: R$ {fx:.3f} — considere aguardar para fechar custos</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='alert-card alert-warning'>Dólar alto: R$ {fx:.3f} — considere aguardar para fechar custos</div>", unsafe_allow_html=True)
             elif fx <= 4.80:
                 alerts_found = True
-                st.markdown(f"<div class='alert-card alert-info'>💹 Dólar baixo: R$ {fx:.3f} — bom momento para fechar custos</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='alert-card alert-info'>Dólar baixo: R$ {fx:.3f} — bom momento para fechar custos</div>", unsafe_allow_html=True)
 
             if not alerts_found:
-                st.markdown("<div class='alert-card alert-info'>✅ Nenhum alerta no momento. Tudo em dia!</div>", unsafe_allow_html=True)
+                st.markdown("<div class='alert-card alert-info'>Nenhum alerta no momento. Tudo em dia!</div>", unsafe_allow_html=True)
 
             # --- Top Clients ---
             st.markdown("<br>", unsafe_allow_html=True)
-            st.subheader("🏆 Clientes Mais Rentáveis")
+            st.subheader("Clientes Mais Rentáveis")
             if not df_won.empty:
                 client_rank = df_won.groupby('client_name').agg(
                     total_profit=('profit', 'sum'),
@@ -461,7 +468,7 @@ with tab_list[0]:
 # ============================================================
 with tab_list[1]:
     if st.session_state.just_loaded:
-        st.markdown(f"<div class='loaded-banner'>✅ Negócio carregado: <strong>{st.session_state.form_client}</strong></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='loaded-banner'>Negócio carregado: <strong>{st.session_state.form_client}</strong></div>", unsafe_allow_html=True)
         st.session_state.just_loaded = False
 
     col_in, col_out = st.columns([1.8, 1], gap="large")
@@ -502,7 +509,7 @@ with tab_list[1]:
             </div>""", unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
-        with st.expander("📊 Detalhamento do Cálculo", expanded=(v_real > 0)):
+        with st.expander("Detalhamento do Cálculo", expanded=(v_real > 0)):
             st.markdown(f"""
 | Item | Valor |
 |---|---|
@@ -518,7 +525,7 @@ with tab_list[1]:
 
         st.markdown("<br>", unsafe_allow_html=True)
         c1, c2 = st.columns(2)
-        if c1.button("💾 SALVAR", use_container_width=True):
+        if c1.button("SALVAR", use_container_width=True):
             if not client_name.strip():
                 st.error("Preencha o nome do cliente.")
             elif qty <= 0 or cost <= 0 or v_real <= 0:
@@ -553,7 +560,7 @@ with tab_list[1]:
                 except Exception as e:
                     st.error(f"Erro: {e}")
 
-        if c2.button("📋 DUPLICAR", use_container_width=True):
+        if c2.button("DUPLICAR", use_container_width=True):
             st.session_state.selected_deal_id = None
             st.toast("Duplicado! Altere e salve como novo.")
 
@@ -561,7 +568,7 @@ with tab_list[1]:
 # TAB 2: PIPELINE
 # ============================================================
 with tab_list[2]:
-    st.header("📊 Pipeline de Vendas")
+    st.header("Pipeline de Vendas")
 
     if not all_deals:
         st.info("Nenhum negócio cadastrado.")
@@ -574,7 +581,7 @@ with tab_list[2]:
 
         df = pd.DataFrame(all_deals)
         df['client_name'] = df['clients'].apply(lambda c: c.get('name', '?') if c else '?')
-        df['created_at_dt'] = pd.to_datetime(df['created_at'])
+        df['created_at_dt'] = pd.to_datetime(df['created_at'], utc=True)
 
         # Apply filters
         if filter_status:
@@ -583,7 +590,7 @@ with tab_list[2]:
         if filter_client:
             df = df[df['client_name'].str.contains(filter_client, case=False, na=False)]
         if filter_date:
-            df = df[df['created_at_dt'] >= pd.Timestamp(filter_date)]
+            df = df[df['created_at_dt'] >= pd.Timestamp(filter_date, tz='UTC')]
 
         if df.empty:
             st.warning("Nenhum negócio encontrado com os filtros aplicados.")
@@ -600,7 +607,7 @@ with tab_list[2]:
                 col.markdown(f"<div class='kpi-card'><div class='kpi-label'>{lbl}</div><div class='kpi-value'>{val}</div></div>", unsafe_allow_html=True)
 
             st.markdown("<br>", unsafe_allow_html=True)
-            st.subheader("🔽 Funil de Conversão")
+            st.subheader("Funil de Conversão")
             sc = df.groupby('status').size().to_dict()
             mx = max(sc.values()) if sc else 1
             for sk in STATUS_KEYS:
@@ -608,18 +615,18 @@ with tab_list[2]:
                 if cnt == 0: continue
                 bw = max(int(cnt/mx*100), 8)
                 vs = df[df['status']==sk]['v_real'].sum()
-                st.markdown(f"<div class='funnel-row'><div style='width:160px;font-size:13px;font-weight:500;'>{cfg['emoji']} {cfg['label']}</div><div class='funnel-bar' style='width:{bw}%;background:{cfg['color']};'>{cnt} neg. | R$ {vs:,.0f}</div></div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='funnel-row'><div style='width:160px;font-size:13px;font-weight:500;'><span style='display:inline-block;width:10px;height:10px;border-radius:50%;background:{cfg['color']};margin-right:6px;'></span>{cfg['label']}</div><div class='funnel-bar' style='width:{bw}%;background:{cfg['color']};'>{cnt} neg. | R$ {vs:,.0f}</div></div>", unsafe_allow_html=True)
 
             st.markdown("<br>", unsafe_allow_html=True)
-            st.subheader("📋 Todos os Negócios")
-            td = [{'Status': f"{status_emoji(d['status'])} {status_key_to_label(d['status'])}", 'Cliente': (d.get('clients',{}) or {}).get('name','?'), 'Qtd': d['qty'], 'Venda R$': f"R$ {float(d['v_real']):,.2f}", 'Lucro R$': f"R$ {float(d['profit']):,.2f}", 'Margem': f"{float(d['margin']):.1f}%", 'Criado por': d.get('created_by_email',''), 'Data': d['created_at'][:10] if d.get('created_at') else ''} for d in all_deals if d['id'] in df['id'].values]
+            st.subheader("Todos os Negócios")
+            td = [{'Status': f"{status_dot_text(d['status'])} {status_key_to_label(d['status'])}", 'Cliente': (d.get('clients',{}) or {}).get('name','?'), 'Qtd': d['qty'], 'Venda R$': f"R$ {float(d['v_real']):,.2f}", 'Lucro R$': f"R$ {float(d['profit']):,.2f}", 'Margem': f"{float(d['margin']):.1f}%", 'Criado por': d.get('created_by_email',''), 'Data': d['created_at'][:10] if d.get('created_at') else ''} for d in all_deals if d['id'] in df['id'].values]
             st.dataframe(pd.DataFrame(td), use_container_width=True, hide_index=True)
 
 # ============================================================
 # TAB 3: REPORTS
 # ============================================================
 with tab_list[3]:
-    st.header("📈 Relatórios")
+    st.header("Relatórios")
 
     report_type = st.radio("Tipo de Relatório:", ["Negócios Concluídos", "Rentabilidade por Cliente", "Todos os Negócios"], horizontal=True)
 
@@ -656,21 +663,21 @@ with tab_list[3]:
             st.bar_chart(g.set_index('Período')[['Vendas (R$)','Lucro (R$)']])
 
             st.markdown("---")
-            st.subheader("📥 Exportar")
+            st.subheader("Exportar")
             disp = cdf[['ts','client_name','qty','cost_usd','v_real','profit','margin']].copy()
             disp.columns = ['Data','Cliente','Qtd','Custo USD','Venda R$','Lucro R$','Margem (%)']
             disp['Data'] = disp['Data'].dt.strftime('%d/%m/%Y')
             e1, e2 = st.columns(2)
             with e1:
                 buf = io.StringIO(); disp.to_csv(buf, index=False)
-                st.download_button("⬇️ CSV", buf.getvalue(), f"integrity_{date.today()}.csv", "text/csv")
+                st.download_button("BaixarCSV", buf.getvalue(), f"integrity_{date.today()}.csv", "text/csv")
             with e2:
                 try:
                     buf = io.BytesIO()
                     with pd.ExcelWriter(buf, engine='openpyxl') as w:
                         disp.to_excel(w, sheet_name='Todos', index=False)
                         g.to_excel(w, sheet_name=view, index=False)
-                    st.download_button("⬇️ Excel", buf.getvalue(), f"integrity_{date.today()}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    st.download_button("BaixarExcel", buf.getvalue(), f"integrity_{date.today()}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
                 except ImportError:
                     st.warning("pip install openpyxl")
 
@@ -703,7 +710,7 @@ with tab_list[3]:
             # Export
             buf = io.StringIO()
             client_summary.to_csv(buf, index=False)
-            st.download_button("⬇️ Exportar CSV", buf.getvalue(), f"clientes_{date.today()}.csv", "text/csv")
+            st.download_button("BaixarExportar CSV", buf.getvalue(), f"clientes_{date.today()}.csv", "text/csv")
 
     elif report_type == "Todos os Negócios":
         if not all_deals:
@@ -712,7 +719,7 @@ with tab_list[3]:
             adf = pd.DataFrame(all_deals)
             adf['client_name'] = adf['clients'].apply(lambda c: c.get('name', '?') if c else '?')
             td = [{
-                'Status': f"{status_emoji(d['status'])} {status_key_to_label(d['status'])}",
+                'Status': f"{status_dot_text(d['status'])} {status_key_to_label(d['status'])}",
                 'Cliente': (d.get('clients',{}) or {}).get('name','?'),
                 'Qtd': d['qty'],
                 'Custo USD': f"$ {float(d['cost_usd']):.2f}",
@@ -726,13 +733,13 @@ with tab_list[3]:
 
             buf = io.StringIO()
             pd.DataFrame(td).to_csv(buf, index=False)
-            st.download_button("⬇️ Exportar CSV", buf.getvalue(), f"todos_negocios_{date.today()}.csv", "text/csv")
+            st.download_button("BaixarExportar CSV", buf.getvalue(), f"todos_negocios_{date.today()}.csv", "text/csv")
 
 # ============================================================
 # TAB 4: FX HISTORY
 # ============================================================
 with tab_list[4]:
-    st.header("💹 Histórico do Câmbio USD/BRL")
+    st.header("Histórico do Câmbio USD/BRL")
 
     fx_period = st.radio("Período:", ["7 dias", "30 dias", "90 dias"], horizontal=True, key="fx_period")
     days_map = {"7 dias": 7, "30 dias": 30, "90 dias": 90}
@@ -752,7 +759,7 @@ with tab_list[4]:
 
         # Impact analysis
         st.markdown("---")
-        st.subheader("📊 Impacto do Câmbio nos Negócios")
+        st.subheader("Impacto do Câmbio nos Negócios")
         st.caption("Simulação: como seus negócios ativos seriam afetados por variações no câmbio.")
         active = [d for d in all_deals if d['status'] not in ['concluido','perdido']]
         if active:
@@ -778,9 +785,9 @@ with tab_list[4]:
 # ============================================================
 if is_admin() and len(tab_list) > 5:
     with tab_list[5]:
-        st.header("⚙️ Painel Administrativo")
+        st.header("Painel Administrativo")
 
-        st.subheader("➕ Criar Novo Usuário")
+        st.subheader("Criar Novo Usuário")
         if not sb_admin:
             st.error("Service role key não configurada. Adicione SUPABASE_SERVICE_KEY nos secrets.")
         else:
@@ -806,7 +813,7 @@ if is_admin() and len(tab_list) > 5:
                         st.warning("Preencha todos os campos.")
 
         st.markdown("---")
-        st.subheader("👥 Usuários Cadastrados")
+        st.subheader("Usuários Cadastrados")
         try:
             users = sb.table('user_profiles').select('*').order('created_at').execute()
             if users.data:
@@ -814,7 +821,7 @@ if is_admin() and len(tab_list) > 5:
                 udf = udf[['full_name', 'email', 'role', 'is_active', 'created_at']]
                 udf.columns = ['Nome', 'Email', 'Papel', 'Ativo', 'Criado em']
                 udf['Criado em'] = pd.to_datetime(udf['Criado em']).dt.strftime('%d/%m/%Y')
-                udf['Ativo'] = udf['Ativo'].map({True: '✅', False: '❌'})
+                udf['Ativo'] = udf['Ativo'].map({True: 'Sim', False: 'Não'})
                 st.dataframe(udf, use_container_width=True, hide_index=True)
             else:
                 st.info("Nenhum usuário cadastrado ainda.")
@@ -822,7 +829,7 @@ if is_admin() and len(tab_list) > 5:
             st.info(f"Carregando usuários... {e}")
 
         st.markdown("---")
-        st.subheader("📜 Log de Atividades")
+        st.subheader("Log de Atividades")
         try:
             events = sb.table('deal_events').select('*, deals(clients(name))').order('created_at', desc=True).limit(50).execute()
             if events.data:
