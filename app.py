@@ -5,6 +5,7 @@ from datetime import datetime, date, timedelta
 from supabase import create_client
 import os
 import io
+import json
 
 # ============================================================
 # 1. CONFIG & SUPABASE
@@ -53,9 +54,14 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color:
 .funnel-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
 .funnel-bar { height: 24px; border-radius: 4px; background: #8DAE10; display: flex; align-items: center; padding: 0 8px; color: white; font-size: 11px; font-weight: 600; }
 .user-badge { padding: 6px 12px; border-radius: 20px; background: #F0FDF4; color: #166534; font-size: 12px; font-weight: 600; display: inline-block; margin-bottom: 8px; }
-.tax-detail { background: #f8fafc; border-radius: 8px; padding: 12px; border: 1px solid #e2e8f0; margin: 8px 0; font-size: 13px; }
-.tax-row { display: flex; justify-content: space-between; padding: 4px 0; }
-.tax-total { border-top: 2px solid #8DAE10; margin-top: 6px; padding-top: 6px; font-weight: 700; }
+.alert-card { padding: 12px 16px; border-radius: 10px; margin: 6px 0; font-size: 13px; }
+.alert-warning { background: #FFF7ED; border: 1px solid #FDBA74; color: #9A3412; }
+.alert-danger { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
+.alert-info { background: #EFF6FF; border: 1px solid #93C5FD; color: #1E40AF; }
+.target-progress { background: #f1f5f9; border-radius: 10px; height: 20px; overflow: hidden; }
+.target-bar { height: 100%; border-radius: 10px; display: flex; align-items: center; padding: 0 8px; font-size: 11px; font-weight: 600; color: white; }
+.client-rank { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; margin: 4px 0; }
+.rank-num { font-size: 20px; font-weight: 700; color: #8DAE10; min-width: 30px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -101,11 +107,9 @@ if not st.session_state.user:
             st.image(logo_path, width=250)
         else:
             st.markdown("## IntegrityMeter BI")
-
         st.markdown("### Entrar")
         email = st.text_input("Email", placeholder="seu@email.com")
         password = st.text_input("Senha", type="password", placeholder="Sua senha")
-
         if st.button("Entrar", use_container_width=True):
             if email and password:
                 success, error = login(email, password)
@@ -115,7 +119,6 @@ if not st.session_state.user:
                     st.error(f"Falha no login: {error}")
             else:
                 st.warning("Preencha email e senha.")
-
         st.caption("Acesso restrito a funcionários da IntegrityMeter.")
     st.stop()
 
@@ -153,7 +156,7 @@ def get_live_fx():
         except:
             pass
         return rate
-    except Exception as e:
+    except:
         try:
             res = sb.table('fx_snapshots').select('rate').order('created_at', desc=True).limit(1).execute()
             if res.data: return float(res.data[0]['rate'])
@@ -172,13 +175,26 @@ def get_cached_fx():
         pass
     return get_live_fx()
 
+def get_fx_history(days=30):
+    """Get FX rate history from snapshots table."""
+    try:
+        since = (datetime.now() - timedelta(days=days)).isoformat()
+        res = sb.table('fx_snapshots').select('rate,created_at').gte('created_at', since).order('created_at').execute()
+        if res.data:
+            df = pd.DataFrame(res.data)
+            df['created_at'] = pd.to_datetime(df['created_at'])
+            df['rate'] = df['rate'].astype(float)
+            return df
+    except:
+        pass
+    return pd.DataFrame()
+
 # ============================================================
-# 6. SESSION STATE — form starts EMPTY
+# 6. SESSION STATE
 # ============================================================
 if 'dolar_live' not in st.session_state:
     st.session_state.dolar_live = get_cached_fx()
 
-# Form defaults: completely empty for new entry
 FORM_DEFAULTS = {
     'selected_deal_id': None,
     'form_client': '',
@@ -194,19 +210,26 @@ for key, default in FORM_DEFAULTS.items():
         st.session_state[key] = default
 
 def clear_form():
-    """Reset all form fields to empty defaults."""
     for key, default in FORM_DEFAULTS.items():
         st.session_state[key] = default
 
 # ============================================================
-# 7. SIDEBAR
+# 7. LOAD ALL DEALS (used across tabs)
+# ============================================================
+try:
+    deals_res = sb.table('deals').select('*, clients(name, notes)').order('updated_at', desc=True).execute()
+    all_deals = deals_res.data or []
+except:
+    all_deals = []
+
+# ============================================================
+# 8. SIDEBAR
 # ============================================================
 with st.sidebar:
     logo_path = os.path.expanduser("~/Desktop/integrity-meter-logo.png")
     if os.path.exists(logo_path):
         st.image(logo_path)
 
-    # User info
     user_name = st.session_state.user_profile.get('full_name', '') or st.session_state.user.email
     user_role = st.session_state.user_profile.get('role', 'user')
     role_label = "Admin" if user_role == 'admin' else "Usuário"
@@ -235,22 +258,21 @@ with st.sidebar:
 
     st.markdown("---")
     st.caption("NEGÓCIOS SALVOS")
-
-    # New deal button
     if st.button("➕ Novo Negócio", key="new_deal_btn", use_container_width=True):
         clear_form()
         st.rerun()
 
-    try:
-        deals_res = sb.table('deals').select('*, clients(name, notes)').order('updated_at', desc=True).execute()
-        all_deals = deals_res.data or []
-    except:
-        all_deals = []
+    # Search filter for deals
+    search_sidebar = st.text_input("🔍 Buscar cliente...", key="sidebar_search", placeholder="Nome do cliente")
 
-    if not all_deals:
-        st.info("Nenhum negócio salvo.")
+    filtered_deals = all_deals
+    if search_sidebar:
+        filtered_deals = [d for d in all_deals if search_sidebar.lower() in ((d.get('clients',{}) or {}).get('name','') or '').lower()]
+
+    if not filtered_deals:
+        st.info("Nenhum negócio encontrado." if search_sidebar else "Nenhum negócio salvo.")
     else:
-        for deal in all_deals:
+        for deal in filtered_deals:
             cn = deal.get('clients', {}).get('name', '?') if deal.get('clients') else '?'
             sk = deal['status']
             dd = deal['created_at'][:10] if deal.get('created_at') else ''
@@ -274,7 +296,6 @@ with st.sidebar:
                 st.markdown("<div class='sidebar-del-btn'>", unsafe_allow_html=True)
                 if st.button("🗑️", key=f"del_{deal['id']}", help=f"Excluir {cn}"):
                     try:
-                        # Delete deal events first (safety), then deal
                         sb.table('deal_events').delete().eq('deal_id', deal['id']).execute()
                         sb.table('deals').delete().eq('id', deal['id']).execute()
                         if st.session_state.selected_deal_id == deal['id']:
@@ -286,17 +307,159 @@ with st.sidebar:
                 st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================================
-# 8. MAIN TABS
+# 9. MAIN TABS
 # ============================================================
-tabs = ["🛡️ Gestão de Margem", "📊 Pipeline & Conversão", "📈 Relatório & Exportação"]
+tab_names = ["🏠 Dashboard", "🛡️ Calculadora", "📊 Pipeline", "📈 Relatórios", "💹 Câmbio"]
 if is_admin():
-    tabs.append("⚙️ Admin")
-tab_list = st.tabs(tabs)
+    tab_names.append("⚙️ Admin")
+tab_list = st.tabs(tab_names)
+
+# ============================================================
+# TAB 0: DASHBOARD
+# ============================================================
+with tab_list[0]:
+    st.header("🏠 Painel Principal")
+
+    if not all_deals:
+        st.info("Bem-vindo! Comece adicionando seu primeiro negócio na aba Calculadora.")
+    else:
+        df_all = pd.DataFrame(all_deals)
+        df_all['client_name'] = df_all['clients'].apply(lambda c: c.get('name', '?') if c else '?')
+        for col in ['v_real','profit','margin','cost_usd']: df_all[col] = df_all[col].astype(float)
+        df_all['qty'] = df_all['qty'].astype(int)
+        df_all['created_at_dt'] = pd.to_datetime(df_all['created_at'])
+
+        # Current month filter
+        now = datetime.now()
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        df_month = df_all[df_all['created_at_dt'] >= month_start]
+        df_active = df_all[~df_all['status'].isin(['concluido','perdido'])]
+        df_won = df_all[df_all['status'] == 'concluido']
+        df_lost = df_all[df_all['status'] == 'perdido']
+
+        # --- KPIs ---
+        k1, k2, k3, k4, k5, k6 = st.columns(6)
+        total_pipeline = df_active['v_real'].sum()
+        total_won = df_won['v_real'].sum()
+        total_profit = df_won['profit'].sum()
+        month_deals = len(df_month)
+        win_rate = (len(df_won)/(len(df_won)+len(df_lost))*100) if (len(df_won)+len(df_lost))>0 else 0
+        avg_margin = df_won['margin'].mean() if not df_won.empty else 0
+
+        for col, lbl, val in [
+            (k1, "Pipeline Ativo", f"R$ {total_pipeline:,.0f}"),
+            (k2, "Total Ganho", f"R$ {total_won:,.0f}"),
+            (k3, "Lucro Total", f"R$ {total_profit:,.0f}"),
+            (k4, "Negócios este Mês", str(month_deals)),
+            (k5, "Taxa Conversão", f"{win_rate:.0f}%"),
+            (k6, "Margem Média", f"{avg_margin:.1f}%"),
+        ]:
+            col.markdown(f"<div class='kpi-card'><div class='kpi-label'>{lbl}</div><div class='kpi-value'>{val}</div></div>", unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # --- Monthly Targets ---
+        col_target, col_alerts = st.columns([1, 1], gap="large")
+
+        with col_target:
+            st.subheader("🎯 Meta Mensal")
+            month_target = st.number_input("Meta de Vendas (R$)", value=100000.0, min_value=0.0, format="%.0f", key="month_target")
+            month_won = df_won[df_won['created_at_dt'] >= month_start]['v_real'].sum() if not df_won.empty else 0
+            month_profit = df_won[df_won['created_at_dt'] >= month_start]['profit'].sum() if not df_won.empty else 0
+            progress_pct = min((month_won / month_target * 100), 100) if month_target > 0 else 0
+            bar_color = "#059669" if progress_pct >= 80 else "#D97706" if progress_pct >= 50 else "#DC2626"
+
+            st.markdown(f"""
+            <div style='margin: 8px 0;'>
+                <div style='display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;'>
+                    <span>R$ {month_won:,.0f} de R$ {month_target:,.0f}</span>
+                    <span style='font-weight:700; color:{bar_color};'>{progress_pct:.0f}%</span>
+                </div>
+                <div class='target-progress'>
+                    <div class='target-bar' style='width:{max(progress_pct, 2)}%; background:{bar_color};'></div>
+                </div>
+                <div style='font-size:12px; color:#6B7280; margin-top:4px;'>
+                    Lucro no mês: <strong>R$ {month_profit:,.0f}</strong>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Monthly trend chart
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.subheader("📊 Tendência Mensal")
+            df_all['month'] = df_all['created_at_dt'].dt.to_period('M').astype(str)
+            monthly = df_all.groupby('month').agg(
+                Vendas=('v_real', 'sum'),
+                Lucro=('profit', 'sum'),
+                Negócios=('id', 'count')
+            ).reset_index()
+            monthly.columns = ['Mês', 'Vendas (R$)', 'Lucro (R$)', 'Negócios']
+            if len(monthly) > 1:
+                st.bar_chart(monthly.set_index('Mês')[['Vendas (R$)', 'Lucro (R$)']])
+            else:
+                st.dataframe(monthly, use_container_width=True, hide_index=True)
+
+        # --- Alerts ---
+        with col_alerts:
+            st.subheader("🔔 Alertas")
+            alerts_found = False
+
+            for deal in all_deals:
+                if deal['status'] in ['concluido', 'perdido']:
+                    continue
+                cn = (deal.get('clients', {}) or {}).get('name', '?')
+                created = datetime.fromisoformat(deal['created_at'].replace('Z', '+00:00'))
+                age_days = (datetime.now(created.tzinfo) - created).days
+
+                if age_days >= 14:
+                    alerts_found = True
+                    st.markdown(f"<div class='alert-card alert-danger'>🚨 <strong>{cn}</strong> — {age_days} dias sem movimentação ({status_key_to_label(deal['status'])})</div>", unsafe_allow_html=True)
+                elif age_days >= 7:
+                    alerts_found = True
+                    st.markdown(f"<div class='alert-card alert-warning'>⚠️ <strong>{cn}</strong> — {age_days} dias parado ({status_key_to_label(deal['status'])})</div>", unsafe_allow_html=True)
+
+            # FX rate alert
+            fx = st.session_state.dolar_live
+            if fx >= 5.50:
+                alerts_found = True
+                st.markdown(f"<div class='alert-card alert-warning'>💹 Dólar alto: R$ {fx:.3f} — considere aguardar para fechar custos</div>", unsafe_allow_html=True)
+            elif fx <= 4.80:
+                alerts_found = True
+                st.markdown(f"<div class='alert-card alert-info'>💹 Dólar baixo: R$ {fx:.3f} — bom momento para fechar custos</div>", unsafe_allow_html=True)
+
+            if not alerts_found:
+                st.markdown("<div class='alert-card alert-info'>✅ Nenhum alerta no momento. Tudo em dia!</div>", unsafe_allow_html=True)
+
+            # --- Top Clients ---
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.subheader("🏆 Clientes Mais Rentáveis")
+            if not df_won.empty:
+                client_rank = df_won.groupby('client_name').agg(
+                    total_profit=('profit', 'sum'),
+                    total_revenue=('v_real', 'sum'),
+                    deals=('id', 'count'),
+                    avg_margin=('margin', 'mean')
+                ).sort_values('total_profit', ascending=False).head(5)
+
+                for i, (name, row) in enumerate(client_rank.iterrows(), 1):
+                    st.markdown(f"""<div class='client-rank'>
+                        <div class='rank-num'>#{i}</div>
+                        <div style='flex:1;'>
+                            <div style='font-weight:600;'>{name}</div>
+                            <div style='font-size:12px; color:#6B7280;'>{int(row['deals'])} neg. | Margem: {row['avg_margin']:.1f}%</div>
+                        </div>
+                        <div style='text-align:right;'>
+                            <div style='font-weight:700; color:#8DAE10;'>R$ {row['total_profit']:,.0f}</div>
+                            <div style='font-size:11px; color:#6B7280;'>de R$ {row['total_revenue']:,.0f}</div>
+                        </div>
+                    </div>""", unsafe_allow_html=True)
+            else:
+                st.info("Conclua negócios para ver o ranking.")
 
 # ============================================================
 # TAB 1: MARGIN CALCULATOR
 # ============================================================
-with tab_list[0]:
+with tab_list[1]:
     if st.session_state.just_loaded:
         st.markdown(f"<div class='loaded-banner'>✅ Negócio carregado: <strong>{st.session_state.form_client}</strong></div>", unsafe_allow_html=True)
         st.session_state.just_loaded = False
@@ -312,7 +475,6 @@ with tab_list[0]:
         v_real = st.number_input("Valor de Venda (R$)", key="form_vreal", min_value=0.0, format="%.2f")
         notes = st.text_area("Notas", key="form_notes", height=68)
 
-    # --- CALCULATIONS ---
     total_tax = total_tax_pct / 100
     custo_brl = qty * cost * st.session_state.dolar_live
     imposto_presumido = v_real * (tax_p / 100)
@@ -326,7 +488,6 @@ with tab_list[0]:
     else: margin_color, profit_color = "#DC2626", "#DC2626"
 
     with col_out:
-        # Only show results if there's actual data
         if v_real > 0:
             st.markdown(f"""<div class='main-card'>
                 <p style='color:#9CA3AF; font-size:12px;'>LUCRO LÍQUIDO</p>
@@ -341,8 +502,6 @@ with tab_list[0]:
             </div>""", unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
-
-        # Tax breakdown — always visible
         with st.expander("📊 Detalhamento do Cálculo", expanded=(v_real > 0)):
             st.markdown(f"""
 | Item | Valor |
@@ -389,7 +548,6 @@ with tab_list[0]:
                         new_deal = sb.table('deals').insert(deal_data).execute()
                         sb.table('deal_events').insert({'deal_id': new_deal.data[0]['id'], 'event_type': 'created', 'new_value': status_key}).execute()
                         st.toast(f"Negócio '{client_name}' criado!")
-                    # Clear form after save
                     clear_form()
                     st.rerun()
                 except Exception as e:
@@ -402,103 +560,224 @@ with tab_list[0]:
 # ============================================================
 # TAB 2: PIPELINE
 # ============================================================
-with tab_list[1]:
+with tab_list[2]:
     st.header("📊 Pipeline de Vendas")
+
     if not all_deals:
         st.info("Nenhum negócio cadastrado.")
     else:
+        # --- Filters ---
+        fc1, fc2, fc3 = st.columns(3)
+        filter_status = fc1.multiselect("Filtrar por Status", STATUS_LABELS, default=[], key="pipe_filter_status")
+        filter_client = fc2.text_input("Buscar Cliente", key="pipe_filter_client")
+        filter_date = fc3.date_input("A partir de", value=date.today() - timedelta(days=90), key="pipe_filter_date")
+
         df = pd.DataFrame(all_deals)
         df['client_name'] = df['clients'].apply(lambda c: c.get('name', '?') if c else '?')
-        tp = df[~df['status'].isin(['concluido','perdido'])]['v_real'].astype(float).sum()
-        won = df[df['status']=='concluido']; lost = df[df['status']=='perdido']
-        tw, tl = len(won), len(lost)
-        ta = len(df) - tw - tl
-        wr = (tw/(tw+tl)*100) if (tw+tl)>0 else 0
-        if not won.empty:
-            wc = won.copy(); wc['cd'] = pd.to_datetime(wc['created_at']); wc['cld'] = pd.to_datetime(wc['closed_at'])
-            v = wc.dropna(subset=['cld']); ac = (v['cld']-v['cd']).dt.days.mean() if not v.empty else 0
-        else: ac = 0
+        df['created_at_dt'] = pd.to_datetime(df['created_at'])
 
-        k1,k2,k3,k4,k5 = st.columns(5)
-        for col, lbl, val in [(k1,"Pipeline Ativo",f"R$ {tp:,.0f}"),(k2,"Negócios Ativos",str(ta)),(k3,"Taxa Conversão",f"{wr:.0f}%"),(k4,"Ganhos/Perdidos",f"{tw}/{tl}"),(k5,"Ciclo Médio",f"{ac:.0f}d")]:
-            col.markdown(f"<div class='kpi-card'><div class='kpi-label'>{lbl}</div><div class='kpi-value'>{val}</div></div>", unsafe_allow_html=True)
+        # Apply filters
+        if filter_status:
+            filter_keys = [status_label_to_key(s) for s in filter_status]
+            df = df[df['status'].isin(filter_keys)]
+        if filter_client:
+            df = df[df['client_name'].str.contains(filter_client, case=False, na=False)]
+        if filter_date:
+            df = df[df['created_at_dt'] >= pd.Timestamp(filter_date)]
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.subheader("🔽 Funil de Conversão")
-        sc = df.groupby('status').size().to_dict()
-        mx = max(sc.values()) if sc else 1
-        for sk in STATUS_KEYS:
-            cfg = STATUS_CONFIG[sk]; cnt = sc.get(sk, 0)
-            if cnt == 0: continue
-            bw = max(int(cnt/mx*100), 8)
-            vs = df[df['status']==sk]['v_real'].astype(float).sum()
-            st.markdown(f"<div class='funnel-row'><div style='width:160px;font-size:13px;font-weight:500;'>{cfg['emoji']} {cfg['label']}</div><div class='funnel-bar' style='width:{bw}%;background:{cfg['color']};'>{cnt} neg. | R$ {vs:,.0f}</div></div>", unsafe_allow_html=True)
+        if df.empty:
+            st.warning("Nenhum negócio encontrado com os filtros aplicados.")
+        else:
+            for col in ['v_real','profit','margin']: df[col] = df[col].astype(float)
+            tp = df[~df['status'].isin(['concluido','perdido'])]['v_real'].sum()
+            won = df[df['status']=='concluido']; lost = df[df['status']=='perdido']
+            tw, tl = len(won), len(lost)
+            ta = len(df) - tw - tl
+            wr = (tw/(tw+tl)*100) if (tw+tl)>0 else 0
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.subheader("📋 Todos os Negócios")
-        td = [{'Status': f"{status_emoji(d['status'])} {status_key_to_label(d['status'])}", 'Cliente': (d.get('clients',{}) or {}).get('name','?'), 'Qtd': d['qty'], 'Venda R$': f"R$ {float(d['v_real']):,.2f}", 'Lucro R$': f"R$ {float(d['profit']):,.2f}", 'Margem': f"{float(d['margin']):.1f}%", 'Criado por': d.get('created_by_email',''), 'Data': d['created_at'][:10] if d.get('created_at') else ''} for d in all_deals]
-        st.dataframe(pd.DataFrame(td), use_container_width=True, hide_index=True)
+            k1,k2,k3,k4,k5 = st.columns(5)
+            for col, lbl, val in [(k1,"Pipeline Ativo",f"R$ {tp:,.0f}"),(k2,"Negócios Ativos",str(ta)),(k3,"Taxa Conversão",f"{wr:.0f}%"),(k4,"Ganhos/Perdidos",f"{tw}/{tl}"),(k5,"Total Filtrado",str(len(df)))]:
+                col.markdown(f"<div class='kpi-card'><div class='kpi-label'>{lbl}</div><div class='kpi-value'>{val}</div></div>", unsafe_allow_html=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.subheader("🔽 Funil de Conversão")
+            sc = df.groupby('status').size().to_dict()
+            mx = max(sc.values()) if sc else 1
+            for sk in STATUS_KEYS:
+                cfg = STATUS_CONFIG[sk]; cnt = sc.get(sk, 0)
+                if cnt == 0: continue
+                bw = max(int(cnt/mx*100), 8)
+                vs = df[df['status']==sk]['v_real'].sum()
+                st.markdown(f"<div class='funnel-row'><div style='width:160px;font-size:13px;font-weight:500;'>{cfg['emoji']} {cfg['label']}</div><div class='funnel-bar' style='width:{bw}%;background:{cfg['color']};'>{cnt} neg. | R$ {vs:,.0f}</div></div>", unsafe_allow_html=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.subheader("📋 Todos os Negócios")
+            td = [{'Status': f"{status_emoji(d['status'])} {status_key_to_label(d['status'])}", 'Cliente': (d.get('clients',{}) or {}).get('name','?'), 'Qtd': d['qty'], 'Venda R$': f"R$ {float(d['v_real']):,.2f}", 'Lucro R$': f"R$ {float(d['profit']):,.2f}", 'Margem': f"{float(d['margin']):.1f}%", 'Criado por': d.get('created_by_email',''), 'Data': d['created_at'][:10] if d.get('created_at') else ''} for d in all_deals if d['id'] in df['id'].values]
+            st.dataframe(pd.DataFrame(td), use_container_width=True, hide_index=True)
 
 # ============================================================
 # TAB 3: REPORTS
 # ============================================================
-with tab_list[2]:
-    st.header("📈 Relatório de Negócios Concluídos")
-    closed = [d for d in all_deals if d['status']=='concluido']
-    if not closed:
-        st.warning("Nenhum negócio concluído encontrado.")
-    else:
-        cdf = pd.DataFrame(closed)
-        cdf['client_name'] = cdf['clients'].apply(lambda c: c.get('name','?') if c else '?')
-        for c in ['v_real','profit','cost_usd','margin']: cdf[c] = cdf[c].astype(float)
-        cdf['qty'] = cdf['qty'].astype(int)
-        tc = 'closed_at' if cdf['closed_at'].notna().any() else 'created_at'
-        cdf['ts'] = pd.to_datetime(cdf[tc], errors='coerce')
-        cdf['month_name'] = cdf['ts'].dt.strftime('%Y-%m')
-        cdf['year'] = cdf['ts'].dt.year
-        cdf['week_start'] = cdf['ts'].dt.to_period('W').apply(lambda r: r.start_time)
+with tab_list[3]:
+    st.header("📈 Relatórios")
 
-        tr, tpr, tdl, am, tt = cdf['v_real'].sum(), cdf['profit'].sum(), len(cdf), 0, cdf['qty'].sum()
-        am = (tpr/tr*100) if tr>0 else 0
+    report_type = st.radio("Tipo de Relatório:", ["Negócios Concluídos", "Rentabilidade por Cliente", "Todos os Negócios"], horizontal=True)
 
-        k1,k2,k3,k4,k5 = st.columns(5)
-        for col,lbl,val in [(k1,"Vendas",str(tdl)),(k2,"Faturamento",f"R$ {tr:,.0f}"),(k3,"Lucro",f"R$ {tpr:,.0f}"),(k4,"Margem",f"{am:.1f}%"),(k5,"Testes",f"{tt:,}")]:
-            col.markdown(f"<div class='kpi-card'><div class='kpi-label'>{lbl}</div><div class='kpi-value'>{val}</div></div>", unsafe_allow_html=True)
+    if report_type == "Negócios Concluídos":
+        closed = [d for d in all_deals if d['status']=='concluido']
+        if not closed:
+            st.warning("Nenhum negócio concluído encontrado.")
+        else:
+            cdf = pd.DataFrame(closed)
+            cdf['client_name'] = cdf['clients'].apply(lambda c: c.get('name','?') if c else '?')
+            for c in ['v_real','profit','cost_usd','margin']: cdf[c] = cdf[c].astype(float)
+            cdf['qty'] = cdf['qty'].astype(int)
+            tc = 'closed_at' if cdf['closed_at'].notna().any() else 'created_at'
+            cdf['ts'] = pd.to_datetime(cdf[tc], errors='coerce')
+            cdf['month_name'] = cdf['ts'].dt.strftime('%Y-%m')
+            cdf['year'] = cdf['ts'].dt.year
+            cdf['week_start'] = cdf['ts'].dt.to_period('W').apply(lambda r: r.start_time)
+
+            tr, tpr, tdl, tt = cdf['v_real'].sum(), cdf['profit'].sum(), len(cdf), cdf['qty'].sum()
+            am = (tpr/tr*100) if tr>0 else 0
+
+            k1,k2,k3,k4,k5 = st.columns(5)
+            for col,lbl,val in [(k1,"Vendas",str(tdl)),(k2,"Faturamento",f"R$ {tr:,.0f}"),(k3,"Lucro",f"R$ {tpr:,.0f}"),(k4,"Margem",f"{am:.1f}%"),(k5,"Testes",f"{tt:,}")]:
+                col.markdown(f"<div class='kpi-card'><div class='kpi-label'>{lbl}</div><div class='kpi-value'>{val}</div></div>", unsafe_allow_html=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            view = st.radio("Período:", ["Semanal","Mensal","Anual"], horizontal=True, key="report_period")
+            gcol = {'Semanal': 'week_start', 'Mensal': 'month_name', 'Anual': 'year'}[view]
+            g = cdf.groupby(gcol).agg(Vendas=('v_real','sum'), Lucro=('profit','sum'), Projetos=('id','count'), Testes=('qty','sum')).reset_index()
+            g.columns = ['Período','Vendas (R$)','Lucro (R$)','Projetos','Testes']
+            if view == 'Semanal': g['Período'] = g['Período'].dt.strftime('%d/%m/%Y')
+            g['Margem (%)'] = (g['Lucro (R$)']/g['Vendas (R$)']*100).round(1)
+            st.dataframe(g.sort_values('Período', ascending=False), use_container_width=True, hide_index=True)
+            st.bar_chart(g.set_index('Período')[['Vendas (R$)','Lucro (R$)']])
+
+            st.markdown("---")
+            st.subheader("📥 Exportar")
+            disp = cdf[['ts','client_name','qty','cost_usd','v_real','profit','margin']].copy()
+            disp.columns = ['Data','Cliente','Qtd','Custo USD','Venda R$','Lucro R$','Margem (%)']
+            disp['Data'] = disp['Data'].dt.strftime('%d/%m/%Y')
+            e1, e2 = st.columns(2)
+            with e1:
+                buf = io.StringIO(); disp.to_csv(buf, index=False)
+                st.download_button("⬇️ CSV", buf.getvalue(), f"integrity_{date.today()}.csv", "text/csv")
+            with e2:
+                try:
+                    buf = io.BytesIO()
+                    with pd.ExcelWriter(buf, engine='openpyxl') as w:
+                        disp.to_excel(w, sheet_name='Todos', index=False)
+                        g.to_excel(w, sheet_name=view, index=False)
+                    st.download_button("⬇️ Excel", buf.getvalue(), f"integrity_{date.today()}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                except ImportError:
+                    st.warning("pip install openpyxl")
+
+    elif report_type == "Rentabilidade por Cliente":
+        if not all_deals:
+            st.warning("Nenhum negócio cadastrado.")
+        else:
+            rdf = pd.DataFrame(all_deals)
+            rdf['client_name'] = rdf['clients'].apply(lambda c: c.get('name', '?') if c else '?')
+            for c in ['v_real','profit','margin','cost_usd']: rdf[c] = rdf[c].astype(float)
+            rdf['qty'] = rdf['qty'].astype(int)
+
+            client_summary = rdf.groupby('client_name').agg(
+                total_vendas=('v_real', 'sum'),
+                total_lucro=('profit', 'sum'),
+                total_testes=('qty', 'sum'),
+                num_negocios=('id', 'count'),
+                margem_media=('margin', 'mean'),
+                custo_medio_usd=('cost_usd', 'mean'),
+            ).sort_values('total_lucro', ascending=False).reset_index()
+
+            client_summary.columns = ['Cliente', 'Vendas (R$)', 'Lucro (R$)', 'Testes', 'Negócios', 'Margem (%)', 'Custo Médio USD']
+            client_summary['Vendas (R$)'] = client_summary['Vendas (R$)'].apply(lambda x: f"R$ {x:,.2f}")
+            client_summary['Lucro (R$)'] = client_summary['Lucro (R$)'].apply(lambda x: f"R$ {x:,.2f}")
+            client_summary['Margem (%)'] = client_summary['Margem (%)'].apply(lambda x: f"{x:.1f}%")
+            client_summary['Custo Médio USD'] = client_summary['Custo Médio USD'].apply(lambda x: f"$ {x:.2f}")
+
+            st.dataframe(client_summary, use_container_width=True, hide_index=True)
+
+            # Export
+            buf = io.StringIO()
+            client_summary.to_csv(buf, index=False)
+            st.download_button("⬇️ Exportar CSV", buf.getvalue(), f"clientes_{date.today()}.csv", "text/csv")
+
+    elif report_type == "Todos os Negócios":
+        if not all_deals:
+            st.warning("Nenhum negócio cadastrado.")
+        else:
+            adf = pd.DataFrame(all_deals)
+            adf['client_name'] = adf['clients'].apply(lambda c: c.get('name', '?') if c else '?')
+            td = [{
+                'Status': f"{status_emoji(d['status'])} {status_key_to_label(d['status'])}",
+                'Cliente': (d.get('clients',{}) or {}).get('name','?'),
+                'Qtd': d['qty'],
+                'Custo USD': f"$ {float(d['cost_usd']):.2f}",
+                'Venda R$': f"R$ {float(d['v_real']):,.2f}",
+                'Lucro R$': f"R$ {float(d['profit']):,.2f}",
+                'Margem': f"{float(d['margin']):.1f}%",
+                'Criado por': d.get('created_by_email',''),
+                'Data': d['created_at'][:10] if d.get('created_at') else ''
+            } for d in all_deals]
+            st.dataframe(pd.DataFrame(td), use_container_width=True, hide_index=True)
+
+            buf = io.StringIO()
+            pd.DataFrame(td).to_csv(buf, index=False)
+            st.download_button("⬇️ Exportar CSV", buf.getvalue(), f"todos_negocios_{date.today()}.csv", "text/csv")
+
+# ============================================================
+# TAB 4: FX HISTORY
+# ============================================================
+with tab_list[4]:
+    st.header("💹 Histórico do Câmbio USD/BRL")
+
+    fx_period = st.radio("Período:", ["7 dias", "30 dias", "90 dias"], horizontal=True, key="fx_period")
+    days_map = {"7 dias": 7, "30 dias": 30, "90 dias": 90}
+    fx_df = get_fx_history(days_map[fx_period])
+
+    col_fx1, col_fx2, col_fx3 = st.columns(3)
+    col_fx1.markdown(f"<div class='kpi-card'><div class='kpi-label'>Atual</div><div class='kpi-value'>R$ {st.session_state.dolar_live:.3f}</div></div>", unsafe_allow_html=True)
+
+    if not fx_df.empty:
+        fx_min, fx_max, fx_avg = fx_df['rate'].min(), fx_df['rate'].max(), fx_df['rate'].mean()
+        col_fx2.markdown(f"<div class='kpi-card'><div class='kpi-label'>Mín / Máx</div><div class='kpi-value'>R$ {fx_min:.3f} / {fx_max:.3f}</div></div>", unsafe_allow_html=True)
+        col_fx3.markdown(f"<div class='kpi-card'><div class='kpi-label'>Média</div><div class='kpi-value'>R$ {fx_avg:.3f}</div></div>", unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
-        view = st.radio("Período:", ["Semanal","Mensal","Anual"], horizontal=True)
-        gcol = {'Semanal': 'week_start', 'Mensal': 'month_name', 'Anual': 'year'}[view]
-        g = cdf.groupby(gcol).agg(Vendas=('v_real','sum'), Lucro=('profit','sum'), Projetos=('id','count'), Testes=('qty','sum')).reset_index()
-        g.columns = ['Período','Vendas (R$)','Lucro (R$)','Projetos','Testes']
-        if view == 'Semanal': g['Período'] = g['Período'].dt.strftime('%d/%m/%Y')
-        g['Margem (%)'] = (g['Lucro (R$)']/g['Vendas (R$)']*100).round(1)
-        st.dataframe(g.sort_values('Período', ascending=False), use_container_width=True, hide_index=True)
-        st.bar_chart(g.set_index('Período')[['Vendas (R$)','Lucro (R$)']])
+        chart_df = fx_df.set_index('created_at')[['rate']].rename(columns={'rate': 'USD/BRL'})
+        st.line_chart(chart_df)
 
+        # Impact analysis
         st.markdown("---")
-        st.subheader("📥 Exportar")
-        disp = cdf[['ts','client_name','qty','cost_usd','v_real','profit','margin']].copy()
-        disp.columns = ['Data','Cliente','Qtd','Custo USD','Venda R$','Lucro R$','Margem (%)']
-        disp['Data'] = disp['Data'].dt.strftime('%d/%m/%Y')
-        e1, e2 = st.columns(2)
-        with e1:
-            buf = io.StringIO(); disp.to_csv(buf, index=False)
-            st.download_button("⬇️ CSV", buf.getvalue(), f"integrity_{date.today()}.csv", "text/csv")
-        with e2:
-            try:
-                buf = io.BytesIO()
-                with pd.ExcelWriter(buf, engine='openpyxl') as w:
-                    disp.to_excel(w, sheet_name='Todos', index=False)
-                    g.to_excel(w, sheet_name=view, index=False)
-                st.download_button("⬇️ Excel", buf.getvalue(), f"integrity_{date.today()}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            except ImportError:
-                st.warning("pip install openpyxl")
+        st.subheader("📊 Impacto do Câmbio nos Negócios")
+        st.caption("Simulação: como seus negócios ativos seriam afetados por variações no câmbio.")
+        active = [d for d in all_deals if d['status'] not in ['concluido','perdido']]
+        if active:
+            sim_rates = [fx_min, fx_avg, st.session_state.dolar_live, fx_max]
+            sim_labels = [f"Mínimo (R$ {fx_min:.3f})", f"Média (R$ {fx_avg:.3f})", f"Atual (R$ {st.session_state.dolar_live:.3f})", f"Máximo (R$ {fx_max:.3f})"]
+            sim_data = []
+            for rate, label in zip(sim_rates, sim_labels):
+                total_cost = sum(float(d['qty']) * float(d['cost_usd']) * rate for d in active)
+                total_rev = sum(float(d['v_real']) for d in active)
+                total_tax = total_rev * total_tax_pct / 100
+                total_profit = total_rev - total_cost - total_tax
+                sim_data.append({'Cenário': label, 'Custo Total (BRL)': f"R$ {total_cost:,.0f}", 'Lucro Projetado': f"R$ {total_profit:,.0f}"})
+            st.dataframe(pd.DataFrame(sim_data), use_container_width=True, hide_index=True)
+        else:
+            st.info("Nenhum negócio ativo para simular.")
+    else:
+        col_fx2.markdown("<div class='kpi-card'><div class='kpi-label'>Mín / Máx</div><div class='kpi-value'>—</div></div>", unsafe_allow_html=True)
+        col_fx3.markdown("<div class='kpi-card'><div class='kpi-label'>Média</div><div class='kpi-value'>—</div></div>", unsafe_allow_html=True)
+        st.info("Dados de câmbio ainda estão sendo coletados. Volte em breve!")
 
 # ============================================================
-# TAB 4: ADMIN (only for admins)
+# TAB 5: ADMIN (only for admins)
 # ============================================================
-if is_admin() and len(tab_list) > 3:
-    with tab_list[3]:
+if is_admin() and len(tab_list) > 5:
+    with tab_list[5]:
         st.header("⚙️ Painel Administrativo")
 
         st.subheader("➕ Criar Novo Usuário")
@@ -511,7 +790,6 @@ if is_admin() and len(tab_list) > 3:
                 nu_pass = st.text_input("Senha temporária", type="password")
                 nu_role = st.selectbox("Papel", ["user", "admin"])
                 submitted = st.form_submit_button("Criar Usuário")
-
                 if submitted:
                     if nu_email and nu_pass and nu_name:
                         try:
