@@ -6,6 +6,10 @@ from supabase import create_client
 import os
 import io
 import json
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 
 # ============================================================
 # 1. CONFIG & SUPABASE
@@ -97,6 +101,86 @@ def logout():
 
 def is_admin():
     return st.session_state.user_profile and st.session_state.user_profile.get('role') == 'admin'
+
+def send_welcome_email(to_email, user_name, temp_password, app_url=""):
+    """Send welcome email with credentials to new user."""
+    try:
+        smtp_host = st.secrets.get("SMTP_HOST", "smtp.gmail.com")
+        smtp_port = int(st.secrets.get("SMTP_PORT", 587))
+        smtp_user = st.secrets.get("SMTP_USER", "")
+        smtp_pass = st.secrets.get("SMTP_PASS", "")
+
+        if not smtp_user or not smtp_pass:
+            return False, "SMTP não configurado. Adicione SMTP_USER e SMTP_PASS nos secrets."
+
+        msg = MIMEMultipart()
+        msg['From'] = smtp_user
+        msg['To'] = to_email
+        msg['Subject'] = "Bem-vindo ao IntegrityMeter BI - Suas Credenciais"
+
+        html_body = f"""
+        <html>
+        <body style="font-family: 'Inter', Arial, sans-serif; background-color: #f8fafc; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 40px; border: 1px solid #e2e8f0;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #8DAE10; margin: 0;">IntegrityMeter BI</h1>
+                    <p style="color: #6B7280; font-size: 14px;">Plataforma de Gestão de Margem</p>
+                </div>
+
+                <h2 style="color: #1F2937;">Olá, {user_name}!</h2>
+
+                <p style="color: #374151; line-height: 1.6;">
+                    Sua conta foi criada na plataforma IntegrityMeter BI.
+                    Abaixo estão suas credenciais de acesso:
+                </p>
+
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 20px; margin: 20px 0;">
+                    <p style="margin: 5px 0; color: #1F2937;"><strong>Email:</strong> {to_email}</p>
+                    <p style="margin: 5px 0; color: #1F2937;"><strong>Senha temporária:</strong> {temp_password}</p>
+                    {f'<p style="margin: 5px 0; color: #1F2937;"><strong>Link:</strong> <a href="{app_url}" style="color: #8DAE10;">{app_url}</a></p>' if app_url else ''}
+                </div>
+
+                <div style="background: #fff7ed; border: 1px solid #fdba74; border-radius: 10px; padding: 15px; margin: 20px 0;">
+                    <p style="color: #9a3412; margin: 0; font-weight: 600;">
+                        Importante: Altere sua senha no primeiro acesso!
+                    </p>
+                    <p style="color: #9a3412; margin: 5px 0 0; font-size: 13px;">
+                        Após fazer login, vá em Dashboard e clique em "Alterar Senha" na barra lateral.
+                    </p>
+                </div>
+
+                <p style="color: #374151; line-height: 1.6;">
+                    Em anexo você encontra o Manual do Usuário com instruções
+                    detalhadas sobre como usar a plataforma.
+                </p>
+
+                <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                    <p style="color: #9CA3AF; font-size: 12px;">IntegrityMeter BI - Gestão de Margem e Pipeline</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        msg.attach(MIMEText(html_body, 'html'))
+
+        # Attach PDF manual if it exists
+        manual_path = os.path.expanduser("~/Desktop/IntegrityMeter_Manual.pdf")
+        if not os.path.exists(manual_path):
+            manual_path = "/mount/src/integritymeter-bi/IntegrityMeter_Manual.pdf"
+        if os.path.exists(manual_path):
+            with open(manual_path, 'rb') as f:
+                pdf_attach = MIMEApplication(f.read(), _subtype='pdf')
+                pdf_attach.add_header('Content-Disposition', 'attachment', filename='IntegrityMeter_Manual.pdf')
+                msg.attach(pdf_attach)
+
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, to_email, msg.as_string())
+
+        return True, None
+    except Exception as e:
+        return False, str(e)
 
 # --- LOGIN SCREEN ---
 if not st.session_state.user:
@@ -242,9 +326,31 @@ with st.sidebar:
     role_label = "Admin" if user_role == 'admin' else "Usuário"
     st.markdown(f"<div class='user-badge'>{user_name} ({role_label})</div>", unsafe_allow_html=True)
 
-    if st.button("Sair", key="logout_btn"):
+    col_sair, col_pw = st.columns(2)
+    if col_sair.button("Sair", key="logout_btn", use_container_width=True):
         logout()
         st.rerun()
+    if col_pw.button("Alterar Senha", key="change_pw_btn", use_container_width=True):
+        st.session_state.show_pw_change = not st.session_state.get('show_pw_change', False)
+
+    if st.session_state.get('show_pw_change', False):
+        with st.form("change_password_form"):
+            new_pw = st.text_input("Nova senha", type="password")
+            confirm_pw = st.text_input("Confirmar nova senha", type="password")
+            pw_submitted = st.form_submit_button("Salvar Nova Senha")
+            if pw_submitted:
+                if not new_pw or len(new_pw) < 6:
+                    st.error("Senha deve ter pelo menos 6 caracteres.")
+                elif new_pw != confirm_pw:
+                    st.error("Senhas não conferem.")
+                else:
+                    try:
+                        sb.auth.update_user({"password": new_pw})
+                        st.success("Senha alterada com sucesso!")
+                        st.session_state.show_pw_change = False
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro: {e}")
 
     st.markdown("---")
     st.caption("CÂMBIO EM TEMPO REAL")
@@ -710,7 +816,7 @@ with tab_list[3]:
             # Export
             buf = io.StringIO()
             client_summary.to_csv(buf, index=False)
-            st.download_button("BaixarExportar CSV", buf.getvalue(), f"clientes_{date.today()}.csv", "text/csv")
+            st.download_button("Exportar CSV", buf.getvalue(), f"clientes_{date.today()}.csv", "text/csv")
 
     elif report_type == "Todos os Negócios":
         if not all_deals:
@@ -733,7 +839,7 @@ with tab_list[3]:
 
             buf = io.StringIO()
             pd.DataFrame(td).to_csv(buf, index=False)
-            st.download_button("BaixarExportar CSV", buf.getvalue(), f"todos_negocios_{date.today()}.csv", "text/csv")
+            st.download_button("Exportar CSV", buf.getvalue(), f"todos_negocios_{date.today()}.csv", "text/csv")
 
 # ============================================================
 # TAB 4: FX HISTORY
@@ -787,15 +893,18 @@ if is_admin() and len(tab_list) > 5:
     with tab_list[5]:
         st.header("Painel Administrativo")
 
+        # --- Create new user ---
         st.subheader("Criar Novo Usuário")
         if not sb_admin:
             st.error("Service role key não configurada. Adicione SUPABASE_SERVICE_KEY nos secrets.")
         else:
+            app_url = st.secrets.get("APP_URL", "")
             with st.form("create_user_form"):
                 nu_name = st.text_input("Nome completo")
                 nu_email = st.text_input("Email")
                 nu_pass = st.text_input("Senha temporária", type="password")
                 nu_role = st.selectbox("Papel", ["user", "admin"])
+                send_email_check = st.checkbox("Enviar email de boas-vindas com credenciais", value=True)
                 submitted = st.form_submit_button("Criar Usuário")
                 if submitted:
                     if nu_email and nu_pass and nu_name:
@@ -807,27 +916,73 @@ if is_admin() and len(tab_list) > 5:
                                 "user_metadata": {"full_name": nu_name, "role": nu_role}
                             })
                             st.success(f"Usuário '{nu_name}' ({nu_email}) criado!")
+
+                            # Send welcome email
+                            if send_email_check:
+                                email_ok, email_err = send_welcome_email(nu_email, nu_name, nu_pass, app_url)
+                                if email_ok:
+                                    st.success(f"Email de boas-vindas enviado para {nu_email}!")
+                                else:
+                                    st.warning(f"Usuário criado, mas email não enviado: {email_err}")
                         except Exception as e:
                             st.error(f"Erro: {e}")
                     else:
                         st.warning("Preencha todos os campos.")
 
+        # --- User list with deactivate/delete ---
         st.markdown("---")
         st.subheader("Usuários Cadastrados")
         try:
             users = sb.table('user_profiles').select('*').order('created_at').execute()
             if users.data:
-                udf = pd.DataFrame(users.data)
-                udf = udf[['full_name', 'email', 'role', 'is_active', 'created_at']]
-                udf.columns = ['Nome', 'Email', 'Papel', 'Ativo', 'Criado em']
-                udf['Criado em'] = pd.to_datetime(udf['Criado em']).dt.strftime('%d/%m/%Y')
-                udf['Ativo'] = udf['Ativo'].map({True: 'Sim', False: 'Não'})
-                st.dataframe(udf, use_container_width=True, hide_index=True)
+                for u in users.data:
+                    u_name = u.get('full_name', '') or u.get('email', '?')
+                    u_email = u.get('email', '')
+                    u_role = u.get('role', 'user')
+                    u_active = u.get('is_active', True)
+                    u_date = u.get('created_at', '')[:10] if u.get('created_at') else ''
+                    u_id = u.get('id', '')
+
+                    # Don't show controls for current user
+                    is_self = (u_id == str(st.session_state.user.id))
+
+                    col_info, col_status, col_action = st.columns([3, 1, 1])
+                    with col_info:
+                        status_badge = "<span style='color:#059669;font-weight:600;'>Ativo</span>" if u_active else "<span style='color:#EF4444;font-weight:600;'>Inativo</span>"
+                        role_badge = "Admin" if u_role == 'admin' else "Usuário"
+                        st.markdown(f"**{u_name}** | {u_email} | {role_badge} | {status_badge} | {u_date}", unsafe_allow_html=True)
+
+                    if not is_self:
+                        with col_status:
+                            if u_active:
+                                if st.button("Desativar", key=f"deact_{u_id}"):
+                                    sb.table('user_profiles').update({'is_active': False}).eq('id', u_id).execute()
+                                    st.toast(f"Usuário '{u_name}' desativado.")
+                                    st.rerun()
+                            else:
+                                if st.button("Reativar", key=f"react_{u_id}"):
+                                    sb.table('user_profiles').update({'is_active': True}).eq('id', u_id).execute()
+                                    st.toast(f"Usuário '{u_name}' reativado.")
+                                    st.rerun()
+
+                        with col_action:
+                            if st.button("Excluir", key=f"delusr_{u_id}"):
+                                try:
+                                    sb_admin.auth.admin.delete_user(u_id)
+                                    sb.table('user_profiles').delete().eq('id', u_id).execute()
+                                    st.toast(f"Usuário '{u_name}' excluído permanentemente.")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Erro ao excluir: {e}")
+                    else:
+                        with col_status:
+                            st.caption("(você)")
             else:
                 st.info("Nenhum usuário cadastrado ainda.")
         except Exception as e:
             st.info(f"Carregando usuários... {e}")
 
+        # --- Activity log ---
         st.markdown("---")
         st.subheader("Log de Atividades")
         try:
