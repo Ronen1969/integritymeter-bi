@@ -327,10 +327,10 @@ with tab_list[0]:
         df_all['client_name'] = df_all['clients'].apply(lambda c: c.get('name', '?') if c else '?')
         for col in ['v_real','profit','margin','cost_usd']: df_all[col] = df_all[col].astype(float)
         df_all['qty'] = df_all['qty'].astype(int)
-        df_all['created_at_dt'] = pd.to_datetime(df_all['created_at'])
+        df_all['created_at_dt'] = pd.to_datetime(df_all['created_at'], utc=True)
 
         # Current month filter
-        now = datetime.now()
+        now = pd.Timestamp.now(tz='UTC')
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         df_month = df_all[df_all['created_at_dt'] >= month_start]
         df_active = df_all[~df_all['status'].isin(['concluido','perdido'])]
