@@ -137,7 +137,7 @@ def send_welcome_email(to_email, user_name, temp_password, app_url=""):
                 <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 20px; margin: 20px 0;">
                     <p style="margin: 5px 0; color: #1F2937;"><strong>Email:</strong> {to_email}</p>
                     <p style="margin: 5px 0; color: #1F2937;"><strong>Senha temporária:</strong> {temp_password}</p>
-                    {f'<p style="margin: 5px 0; color: #1F2937;"><strong>Link:</strong> <a href="{app_url}" style="color: #8DAE10;">{app_url}</a></p>' if app_url else ''}
+                    {f'<p style="margin: 15px 0 5px; text-align: center;"><a href="{app_url}" style="background-color: #8DAE10; color: #ffffff; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">Acessar Plataforma</a></p>' if app_url else ''}
                 </div>
 
                 <div style="background: #fff7ed; border: 1px solid #fdba74; border-radius: 10px; padding: 15px; margin: 20px 0;">
