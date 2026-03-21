@@ -393,10 +393,10 @@ with st.sidebar:
     st.caption(f"Total impostos: **{total_tax_pct:.2f}%**")
 
     st.markdown("---")
-    st.caption("NEGÓCIOS SALVOS")
-    if st.button("+ Novo Negócio", key="new_deal_btn", use_container_width=True):
+    st.caption("MEUS NEGÓCIOS")
+    if st.button("+ Novo Negócio", key="new_deal_btn", use_container_width=True, help="Limpa o formulário e abre a aba Novo Negócio"):
         clear_form()
-        st.rerun()
+        st.rerun()  # Form will be cleared on next cycle
 
     # Search filter for deals
     search_sidebar = st.text_input("Buscar cliente...", key="sidebar_search", placeholder="Nome do cliente")
@@ -438,7 +438,7 @@ with st.sidebar:
 # ============================================================
 # 9. MAIN TABS
 # ============================================================
-tab_names = ["Dashboard", "Calculadora", "Pipeline", "Relatórios", "Câmbio"]
+tab_names = ["Dashboard", "Novo Negócio", "Pipeline", "Relatórios", "Câmbio"]
 if is_admin():
     tab_names.append("Admin")
 tab_list = st.tabs(tab_names)
@@ -589,9 +589,22 @@ with tab_list[0]:
 # TAB 1: MARGIN CALCULATOR
 # ============================================================
 with tab_list[1]:
+    is_editing = st.session_state.selected_deal_id is not None
+
     if st.session_state.just_loaded:
-        st.markdown(f"<div class='loaded-banner'>Negócio carregado: <strong>{st.session_state.form_client}</strong></div>", unsafe_allow_html=True)
+        st.markdown(f"""<div class='loaded-banner'>
+            Editando negócio: <strong>{st.session_state.form_client}</strong>
+            — altere os dados e clique "Atualizar Negócio"
+        </div>""", unsafe_allow_html=True)
         st.session_state.just_loaded = False
+    elif not is_editing:
+        st.markdown("""<div style='padding:12px 16px;border-radius:8px;background:#EFF6FF;border:1px solid #93C5FD;color:#1E40AF;font-size:14px;margin-bottom:12px;'>
+            Preencha os dados abaixo para simular a margem e criar um novo negócio.
+        </div>""", unsafe_allow_html=True)
+    else:
+        st.markdown(f"""<div class='loaded-banner'>
+            Editando: <strong>{st.session_state.form_client}</strong>
+        </div>""", unsafe_allow_html=True)
 
     col_in, col_out = st.columns([1.8, 1], gap="large")
     with col_in:
@@ -646,8 +659,14 @@ with tab_list[1]:
 """)
 
         st.markdown("<br>", unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        if c1.button("SALVAR", use_container_width=True):
+        save_label = "ATUALIZAR NEGÓCIO" if is_editing else "CRIAR NEGÓCIO"
+        if is_editing:
+            c1, c2 = st.columns(2)
+        else:
+            c1 = st.container()
+            c2 = None
+
+        if c1.button(save_label, use_container_width=True):
             if not client_name.strip():
                 st.error("Preencha o nome do cliente.")
             elif qty <= 0 or cost <= 0 or v_real <= 0:
@@ -666,7 +685,7 @@ with tab_list[1]:
                         'created_by': str(st.session_state.user.id),
                         'created_by_email': st.session_state.user.email,
                     }
-                    if st.session_state.selected_deal_id:
+                    if is_editing:
                         old = sb.table('deals').select('status').eq('id', st.session_state.selected_deal_id).execute()
                         old_status = old.data[0]['status'] if old.data else None
                         sb.table('deals').update(deal_data).eq('id', st.session_state.selected_deal_id).execute()
@@ -682,9 +701,10 @@ with tab_list[1]:
                 except Exception as e:
                     st.error(f"Erro: {e}")
 
-        if c2.button("DUPLICAR", use_container_width=True):
-            st.session_state.selected_deal_id = None
-            st.toast("Duplicado! Altere e salve como novo.")
+        if is_editing and c2 is not None:
+            if c2.button("DUPLICAR", use_container_width=True, help="Cria uma cópia deste negócio como novo"):
+                st.session_state.selected_deal_id = None
+                st.toast("Duplicado! Altere os dados e clique 'Criar Negócio'.")
 
 # ============================================================
 # TAB 2: PIPELINE
