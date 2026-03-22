@@ -17,14 +17,30 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color:
     width: 280px !important; min-width: 280px !important;
     transition: margin-left 0.3s ease, opacity 0.3s ease;
 }
-/* Hide the zero-height components.html iframe and its label */
+/* Hide the zero-height components.html iframe label (keep iframe alive for JS) */
 [data-testid="stCustomComponentV1"] {
-    display: none !important;
-    height: 0 !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    position: absolute !important;
+    top: -9999px !important;
+    left: -9999px !important;
+    width: 1px !important;
+    height: 1px !important;
     overflow: hidden !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+}
+/* ── Sidebar collapse: main content fills the freed space ── */
+[data-testid="stSidebar"][aria-expanded="false"] {
+    min-width: 0 !important;
+    max-width: 0 !important;
+    flex: 0 0 0 !important;
+    overflow: hidden !important;
+    transition: min-width 0.3s ease, max-width 0.3s ease, flex 0.3s ease !important;
+}
+[data-testid="stSidebar"][aria-expanded="false"] ~ [data-testid="stAppViewContainer"] {
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+    width: 100% !important;
+    transition: padding-left 0.3s ease, margin-left 0.3s ease !important;
 }
 .stButton>button {
     background-color: #8DAE10 !important; color: white !important;
