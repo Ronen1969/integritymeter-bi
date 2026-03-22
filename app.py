@@ -546,21 +546,26 @@ with st.sidebar:
 
     st.markdown("---")
     st.caption("CÂMBIO USD/BRL")
+    # If button was clicked, update the widget's key so it shows the new rate
+    if st.session_state.get('_fx_pending'):
+        st.session_state.fx_manual_input = st.session_state._fx_pending
+        del st.session_state['_fx_pending']
     # Editable rate — user can type directly or click Att. to fetch live
-    st.session_state.dolar_live = st.number_input(
+    fx_value = st.number_input(
         "Taxa câmbio", value=st.session_state.dolar_live,
         min_value=0.01, step=0.01, format="%.4f",
         key="fx_manual_input", help="Edite manualmente ou clique Att. para buscar online",
         label_visibility="collapsed"
     )
+    st.session_state.dolar_live = fx_value
     if st.button("Att. Câmbio Online", help="Buscar taxa atual USD/BRL", use_container_width=True):
-        old = st.session_state.dolar_live
         new_rate = get_live_fx()
-        if new_rate and new_rate != old:
+        if new_rate:
+            st.session_state._fx_pending = new_rate
             st.session_state.dolar_live = new_rate
             st.toast(f"Câmbio atualizado: R$ {new_rate:.4f}")
         else:
-            st.toast(f"Câmbio mantido: R$ {old:.4f} (APIs indisponíveis ou mesmo valor)")
+            st.toast(f"APIs indisponíveis. Edite manualmente.")
         st.rerun()
 
     st.markdown("---")
