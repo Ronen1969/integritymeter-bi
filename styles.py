@@ -17,6 +17,15 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color:
     width: 280px !important; min-width: 280px !important;
     transition: margin-left 0.3s ease, opacity 0.3s ease;
 }
+/* Hide the zero-height components.html iframe and its label */
+[data-testid="stCustomComponentV1"] {
+    display: none !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
 .stButton>button {
     background-color: #8DAE10 !important; color: white !important;
     border-radius: 10px !important; min-height: 45px; height: auto;
@@ -37,9 +46,12 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color:
     padding: 16px; border-radius: 12px;
     background: linear-gradient(135deg, #f8fafc, #f1f5f9);
     border: 1px solid #e2e8f0; text-align: center;
+    min-height: 96px;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
 }
-.kpi-value  { font-size: 28px; font-weight: 700; color: #8DAE10; margin: 4px 0; }
-.kpi-label  { font-size: 11px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px; }
+.kpi-value  { font-size: 22px; font-weight: 700; color: #8DAE10; margin: 4px 0; white-space: nowrap; }
+.kpi-label  { font-size: 10px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.3; }
 .funnel-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
 .funnel-bar {
     height: 24px; border-radius: 4px; background: #8DAE10;
