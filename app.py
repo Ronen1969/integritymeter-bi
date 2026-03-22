@@ -10,6 +10,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
+import streamlit.components.v1 as components
 
 # ============================================================
 # 1. CONFIG & SUPABASE
@@ -40,7 +41,7 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #FFFFFF; }
-[data-testid="stSidebar"] { background-color: #FFFFFF; border-right: 1px solid #F3F4F6; width: 400px !important; }
+[data-testid="stSidebar"] { background-color: #FFFFFF; border-right: 1px solid #F3F4F6; width: 400px !important; transition: margin-left 0.3s ease, opacity 0.3s ease; }
 .stButton>button {
     background-color: #8DAE10 !important; color: white !important;
     border-radius: 10px !important; min-height: 45px; height: auto;
@@ -66,8 +67,76 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color:
 .target-bar { height: 100%; border-radius: 10px; display: flex; align-items: center; padding: 0 8px; font-size: 11px; font-weight: 600; color: white; }
 .client-rank { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; margin: 4px 0; }
 .rank-num { font-size: 20px; font-weight: 700; color: #8DAE10; min-width: 30px; }
+/* Fix 1: Sidebar toggle button */
+.sidebar-toggle-btn button {
+    background-color: #f1f5f9 !important; color: #6B7280 !important;
+    border: 1px solid #e2e8f0 !important; min-height: 32px !important;
+    padding: 4px 12px !important; font-size: 18px !important;
+    border-radius: 8px !important;
+}
+.sidebar-toggle-btn button:hover { background-color: #e2e8f0 !important; }
+/* Fix 2: Pipeline delete button */
+.pipe-del-btn button {
+    background-color: #FEF2F2 !important; color: #EF4444 !important;
+    border: 1px solid #FCA5A5 !important; min-height: 32px !important;
+    padding: 4px 8px !important; font-size: 12px !important;
+}
+.pipe-del-btn button:hover { background-color: #EF4444 !important; color: white !important; }
+/* Fix 6: Confirmation dialog styling */
+.confirm-delete { padding: 12px 16px; border-radius: 10px; background: #FEF2F2; border: 1px solid #FCA5A5; margin: 6px 0; }
+.confirm-delete-btns button { min-height: 32px !important; padding: 4px 16px !important; }
 </style>
 """, unsafe_allow_html=True)
+
+# Fix 5: JavaScript to auto-select number input content on focus
+# This prevents the "0.005 instead of 5" problem
+st.markdown("""
+<script>
+document.addEventListener('focusin', function(e) {
+    if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'number') {
+        setTimeout(function() { e.target.select(); }, 50);
+    }
+});
+</script>
+""", unsafe_allow_html=True)
+
+# Alternative JS injection via components for broader browser support
+components.html("""
+<script>
+// Fix 5: Auto-select number inputs on focus so typing replaces the value
+const doc = window.parent.document;
+doc.addEventListener('focusin', function(e) {
+    if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'number') {
+        setTimeout(function() { e.target.select(); }, 50);
+    }
+});
+
+// Fix 4: Session persistence - save/restore auth tokens in localStorage
+function saveSession(accessToken, refreshToken, userId) {
+    if (accessToken) {
+        localStorage.setItem('im_access_token', accessToken);
+        localStorage.setItem('im_refresh_token', refreshToken || '');
+        localStorage.setItem('im_user_id', userId || '');
+    }
+}
+function clearSession() {
+    localStorage.removeItem('im_access_token');
+    localStorage.removeItem('im_refresh_token');
+    localStorage.removeItem('im_user_id');
+}
+function getSession() {
+    return {
+        access_token: localStorage.getItem('im_access_token'),
+        refresh_token: localStorage.getItem('im_refresh_token'),
+        user_id: localStorage.getItem('im_user_id')
+    };
+}
+// Expose functions globally
+window.imSaveSession = saveSession;
+window.imClearSession = clearSession;
+window.imGetSession = getSession;
+</script>
+""", height=0)
 
 # ============================================================
 # 3. AUTHENTICATION
@@ -81,6 +150,10 @@ def login(email, password):
     try:
         res = sb.auth.sign_in_with_password({"email": email, "password": password})
         st.session_state.user = res.user
+        # Fix 4: Store session tokens for persistence across refreshes
+        if res.session:
+            st.session_state['_access_token'] = res.session.access_token
+            st.session_state['_refresh_token'] = res.session.refresh_token
         profile = sb.table('user_profiles').select('*').eq('id', res.user.id).execute()
         if profile.data:
             if not profile.data[0].get('is_active', True):
@@ -91,6 +164,23 @@ def login(email, password):
     except Exception as e:
         return False, str(e)
 
+def try_restore_session():
+    """Fix 4: Try to restore session from Supabase's internal session."""
+    try:
+        session = sb.auth.get_session()
+        if session and session.user:
+            st.session_state.user = session.user
+            profile = sb.table('user_profiles').select('*').eq('id', session.user.id).execute()
+            if profile.data:
+                if not profile.data[0].get('is_active', True):
+                    st.session_state.user = None
+                    return False
+                st.session_state.user_profile = profile.data[0]
+            return True
+    except:
+        pass
+    return False
+
 def logout():
     try:
         sb.auth.sign_out()
@@ -98,6 +188,13 @@ def logout():
         pass
     st.session_state.user = None
     st.session_state.user_profile = None
+    # Fix 4: Clear stored session tokens
+    for k in ['_access_token', '_refresh_token']:
+        st.session_state.pop(k, None)
+
+# Fix 4: Try to restore session on page reload
+if st.session_state.user is None:
+    try_restore_session()
 
 def is_admin():
     return st.session_state.user_profile and st.session_state.user_profile.get('role') == 'admin'
@@ -337,8 +434,33 @@ except:
     all_deals = []
 
 # ============================================================
-# 8. SIDEBAR
+# 8. SIDEBAR (Fix 1: collapsible via Streamlit native button)
 # ============================================================
+# Fix 1: Sidebar collapse/expand hint at top of main area
+# Streamlit has a built-in sidebar collapse (arrow button).
+# We add an explicit toggle button in the main content area for better discoverability.
+if 'sidebar_collapsed' not in st.session_state:
+    st.session_state.sidebar_collapsed = False
+
+col_toggle, col_spacer = st.columns([0.08, 0.92])
+with col_toggle:
+    st.markdown("<div class='sidebar-toggle-btn'>", unsafe_allow_html=True)
+    toggle_label = ">" if st.session_state.sidebar_collapsed else "<"
+    if st.button(toggle_label, key="sidebar_toggle", help="Ocultar/mostrar barra lateral para maximizar conteúdo"):
+        st.session_state.sidebar_collapsed = not st.session_state.sidebar_collapsed
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# Fix 1: Apply CSS to hide sidebar when collapsed
+if st.session_state.sidebar_collapsed:
+    st.markdown("""
+    <style>
+    [data-testid="stSidebar"] { display: none !important; }
+    [data-testid="stSidebarCollapsedControl"] { display: none !important; }
+    .main .block-container { max-width: 100% !important; padding-left: 2rem !important; }
+    </style>
+    """, unsafe_allow_html=True)
+
 with st.sidebar:
     logo_path = os.path.expanduser("~/Desktop/integrity-meter-logo.png")
     if os.path.exists(logo_path):
@@ -350,9 +472,19 @@ with st.sidebar:
     st.markdown(f"<div class='user-badge'>{user_name} ({role_label})</div>", unsafe_allow_html=True)
 
     col_sair, col_pw = st.columns(2)
+    # Fix 6: Logout with confirmation
     if col_sair.button("Sair", key="logout_btn", use_container_width=True):
-        logout()
-        st.rerun()
+        st.session_state['_confirm_logout'] = True
+    if st.session_state.get('_confirm_logout', False):
+        st.warning("Deseja realmente sair?")
+        cl1, cl2 = st.columns(2)
+        if cl1.button("Sim, sair", key="confirm_logout_yes"):
+            st.session_state['_confirm_logout'] = False
+            logout()
+            st.rerun()
+        if cl2.button("Cancelar", key="confirm_logout_no"):
+            st.session_state['_confirm_logout'] = False
+            st.rerun()
     if col_pw.button("Alterar Senha", key="change_pw_btn", use_container_width=True):
         st.session_state.show_pw_change = not st.session_state.get('show_pw_change', False)
 
@@ -387,8 +519,8 @@ with st.sidebar:
 
     st.markdown("---")
     st.subheader("Configurações Fiscais")
-    tax_p = st.number_input("Lucro Presumido (%)", value=16.33, min_value=0.0, format="%.2f", key="tax_presumido", help="Alíquota do regime Lucro Presumido — imposto federal sobre o faturamento bruto")
-    adm_p = st.number_input("Taxa Administração (%)", value=2.50, min_value=0.0, format="%.2f", key="tax_admin", help="Taxa administrativa cobrada sobre o faturamento para custos operacionais")
+    tax_p = st.number_input("Lucro Presumido (%)", value=16.33, min_value=0.0, step=0.5, format="%.2f", key="tax_presumido", help="Alíquota do regime Lucro Presumido — imposto federal sobre o faturamento bruto")
+    adm_p = st.number_input("Taxa Administração (%)", value=2.50, min_value=0.0, step=0.5, format="%.2f", key="tax_admin", help="Taxa administrativa cobrada sobre o faturamento para custos operacionais")
     total_tax_pct = tax_p + adm_p
     st.caption(f"Total impostos: **{total_tax_pct:.2f}%**")
 
@@ -450,7 +582,7 @@ with tab_list[0]:
     st.header("Painel Principal")
 
     if not all_deals:
-        st.info("Bem-vindo! Comece adicionando seu primeiro negócio na aba Calculadora.")
+        st.info("Bem-vindo! Comece adicionando seu primeiro negócio na aba 'Novo Negócio' ou clique '+ Novo Negócio' na barra lateral.")
     else:
         df_all = pd.DataFrame(all_deals)
         df_all['client_name'] = df_all['clients'].apply(lambda c: c.get('name', '?') if c else '?')
@@ -492,7 +624,7 @@ with tab_list[0]:
 
         with col_target:
             st.subheader("Meta Mensal")
-            month_target = st.number_input("Meta de Vendas (R$)", value=100000.0, min_value=0.0, format="%.0f", key="month_target")
+            month_target = st.number_input("Meta de Vendas (R$)", value=100000.0, min_value=0.0, step=5000.0, format="%.0f", key="month_target", help="Clique +/- para ajustar em R$ 5.000 ou digite o valor desejado")
             month_won = df_won[df_won['created_at_dt'] >= month_start]['v_real'].sum() if not df_won.empty else 0
             month_profit = df_won[df_won['created_at_dt'] >= month_start]['profit'].sum() if not df_won.empty else 0
             progress_pct = min((month_won / month_target * 100), 100) if month_target > 0 else 0
@@ -612,9 +744,9 @@ with tab_list[1]:
         client_name = i1.text_input("Cliente", key="form_client", help="Nome da empresa ou pessoa jurídica contratante")
         status_deal = i2.selectbox("Status", STATUS_LABELS, index=st.session_state.form_status_idx, help="Fase atual do negócio no pipeline de vendas")
         i3, i4 = st.columns(2)
-        qty = i3.number_input("Qtd Testes", key="form_qty", min_value=0, help="Quantidade de testes/avaliações a serem aplicados neste negócio")
-        cost = i4.number_input("Custo Unitário (USD)", key="form_cost", min_value=0.0, format="%.2f", help="Custo GA por teste pago ao fornecedor em dólares americanos")
-        v_real = st.number_input("Valor de Venda (R$)", key="form_vreal", min_value=0.0, format="%.2f", help="Valor total cobrado do cliente em reais brasileiros")
+        qty = i3.number_input("Qtd Testes", key="form_qty", min_value=0, step=1, help="Quantidade de testes/avaliações a serem aplicados neste negócio")
+        cost = i4.number_input("Custo Unitário (USD)", key="form_cost", min_value=0.0, step=1.0, format="%.2f", help="Custo GA por teste pago ao fornecedor em dólares americanos — clique no campo e digite o valor")
+        v_real = st.number_input("Valor de Venda (R$)", key="form_vreal", min_value=0.0, step=100.0, format="%.2f", help="Valor total cobrado do cliente em reais brasileiros — clique no campo e digite o valor")
         notes = st.text_area("Notas", key="form_notes", height=68, help="Observações internas sobre o negócio (não visível ao cliente)")
 
     total_tax = total_tax_pct / 100
@@ -761,8 +893,65 @@ with tab_list[2]:
 
             st.markdown("<br>", unsafe_allow_html=True)
             st.subheader("Todos os Negócios")
-            td = [{'Status': f"{status_dot_text(d['status'])} {status_key_to_label(d['status'])}", 'Cliente': (d.get('clients',{}) or {}).get('name','?'), 'Qtd': d['qty'], 'Venda R$': f"R$ {float(d['v_real']):,.2f}", 'Lucro R$': f"R$ {float(d['profit']):,.2f}", 'Margem': f"{float(d['margin']):.1f}%", 'Criado por': d.get('created_by_email',''), 'Data': d['created_at'][:10] if d.get('created_at') else ''} for d in all_deals if d['id'] in df['id'].values]
-            st.dataframe(pd.DataFrame(td), use_container_width=True, hide_index=True)
+
+            # Fix 2: Pipeline with delete buttons per deal
+            pipe_deals = [d for d in all_deals if d['id'] in df['id'].values]
+            for pd_deal in pipe_deals:
+                pd_cn = (pd_deal.get('clients', {}) or {}).get('name', '?')
+                pd_sk = pd_deal['status']
+                pd_vr = float(pd_deal['v_real'])
+                pd_pr = float(pd_deal['profit'])
+                pd_mg = float(pd_deal['margin'])
+                pd_dt = pd_deal['created_at'][:10] if pd_deal.get('created_at') else ''
+                pd_by = pd_deal.get('created_by_email', '')
+
+                pc1, pc2, pc3, pc4, pc5, pc6, pc7 = st.columns([0.8, 2.2, 1.0, 1.3, 1.3, 0.8, 0.6])
+                pc1.markdown(f"<small>{status_dot(pd_sk)} {status_key_to_label(pd_sk)}</small>", unsafe_allow_html=True)
+                pc2.markdown(f"**{pd_cn}**")
+                pc3.markdown(f"<small>R$ {pd_vr:,.0f}</small>", unsafe_allow_html=True)
+                pc4.markdown(f"<small>R$ {pd_pr:,.0f} ({pd_mg:.0f}%)</small>", unsafe_allow_html=True)
+                pc5.markdown(f"<small>{pd_dt}</small>", unsafe_allow_html=True)
+                with pc6:
+                    if st.button("Editar", key=f"pipe_edit_{pd_deal['id']}", help=f"Editar {pd_cn}"):
+                        load_deal_to_form(pd_deal)
+                        st.rerun()
+                with pc7:
+                    st.markdown("<div class='pipe-del-btn'>", unsafe_allow_html=True)
+                    # Fix 6: Two-step delete confirmation
+                    confirm_key = f"pipe_confirm_del_{pd_deal['id']}"
+                    if st.session_state.get(confirm_key, False):
+                        pass  # Handled below
+                    elif st.button("X", key=f"pipe_del_{pd_deal['id']}", help=f"Excluir {pd_cn}"):
+                        st.session_state[confirm_key] = True
+                        st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                # Show confirmation dialog if pending
+                confirm_key = f"pipe_confirm_del_{pd_deal['id']}"
+                if st.session_state.get(confirm_key, False):
+                    st.markdown(f"<div class='confirm-delete'>Tem certeza que deseja excluir <strong>{pd_cn}</strong>?</div>", unsafe_allow_html=True)
+                    cc1, cc2, cc3 = st.columns([1, 1, 4])
+                    with cc1:
+                        if st.button("Sim, excluir", key=f"pipe_yes_{pd_deal['id']}"):
+                            try:
+                                sb.table('deal_events').delete().eq('deal_id', pd_deal['id']).execute()
+                                sb.table('deals').delete().eq('id', pd_deal['id']).execute()
+                                if st.session_state.selected_deal_id == pd_deal['id']:
+                                    clear_form()
+                                st.toast(f"Negócio '{pd_cn}' excluído!")
+                                st.session_state[confirm_key] = False
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro ao excluir: {e}")
+                    with cc2:
+                        if st.button("Cancelar", key=f"pipe_no_{pd_deal['id']}"):
+                            st.session_state[confirm_key] = False
+                            st.rerun()
+
+            # Also show as table for sorting/filtering
+            with st.expander("Ver como Tabela", expanded=False):
+                td = [{'Status': f"{status_dot_text(d['status'])} {status_key_to_label(d['status'])}", 'Cliente': (d.get('clients',{}) or {}).get('name','?'), 'Qtd': d['qty'], 'Venda R$': f"R$ {float(d['v_real']):,.2f}", 'Lucro R$': f"R$ {float(d['profit']):,.2f}", 'Margem': f"{float(d['margin']):.1f}%", 'Criado por': d.get('created_by_email',''), 'Data': d['created_at'][:10] if d.get('created_at') else ''} for d in pipe_deals]
+                st.dataframe(pd.DataFrame(td), use_container_width=True, hide_index=True)
 
 # ============================================================
 # TAB 3: REPORTS
