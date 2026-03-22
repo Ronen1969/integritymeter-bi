@@ -407,6 +407,7 @@ FORM_DEFAULTS = {
     'form_unit_price': 0.0,
     'form_vreal': 0.0,
     'form_status_idx': 0,
+    'form_date': date.today(),
     'form_notes': '',
     'just_loaded': False,
 }
@@ -440,6 +441,12 @@ if '_pending_load' in st.session_state and st.session_state['_pending_load'] is 
     st.session_state.form_vreal = _vr
     _migrated = _migrate_status(_deal['status'])
     st.session_state.form_status_idx = STATUS_KEYS.index(_migrated) if _migrated in STATUS_KEYS else 0
+    # Load date from deal
+    try:
+        _dt_str = _deal.get('created_at', '')[:10]
+        st.session_state.form_date = date.fromisoformat(_dt_str) if _dt_str else date.today()
+    except:
+        st.session_state.form_date = date.today()
     st.session_state.form_notes = (_deal.get('clients', {}) or {}).get('notes', '') or ''
     st.session_state.selected_deal_id = _deal['id']
     st.session_state.just_loaded = True
@@ -514,11 +521,12 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.caption("IMPOSTOS")
+    st.caption("CONFIGURAÇÕES")
+    default_cost_usd = st.number_input("Custo Padrão USD", value=4.00, min_value=0.0, step=0.5, format="%.2f", key="default_cost_usd", help="Custo unitário padrão em USD — pré-preenchido nos novos negócios")
     tax_p = st.number_input("Lucro Presumido (%)", value=16.33, min_value=0.0, step=0.5, format="%.2f", key="tax_presumido")
     adm_p = st.number_input("Taxa Administração (%)", value=2.50, min_value=0.0, step=0.5, format="%.2f", key="tax_admin")
     total_tax_pct = tax_p + adm_p
-    st.caption(f"Total: **{total_tax_pct:.2f}%**")
+    st.caption(f"Impostos: **{total_tax_pct:.2f}%**")
 
 # ============================================================
 # 9. MAIN TABS
@@ -695,17 +703,21 @@ with tab_list[1]:
     with col_in:
         i1, i2 = st.columns(2)
         client_name = i1.text_input("Cliente", key="form_client", help="Nome da empresa ou pessoa jurídica contratante")
-        status_deal = i2.selectbox("Status", STATUS_LABELS, index=st.session_state.form_status_idx, help="Fase atual do negócio no pipeline de vendas")
+        status_deal = i2.selectbox("Status", STATUS_LABELS, index=st.session_state.form_status_idx)
         i3, i4 = st.columns(2)
-        qty = i3.number_input("Qtd Testes", key="form_qty", min_value=0, step=1, help="Quantidade de testes/avaliações a serem aplicados neste negócio")
-        cost = i4.number_input("Custo Unitário (USD)", key="form_cost", min_value=0.0, step=1.0, format="%.2f", help="Custo GA por teste pago ao fornecedor em dólares americanos")
+        deal_date = i3.date_input("Data", key="form_date", help="Data do negócio")
+        qty = i4.number_input("Qtd Testes", key="form_qty", min_value=0, step=1)
         i5, i6 = st.columns(2)
-        unit_price = i5.number_input("Preço Unitário (R$)", key="form_unit_price", min_value=0.0, step=5.0, format="%.2f", help="Preço por teste cobrado do cliente em reais")
-        # Auto-calculate total: unit price × qty — write directly to session_state
+        # Pre-fill cost from sidebar default if this is a new deal with cost=0
+        if st.session_state.form_cost == 0.0 and not is_editing:
+            st.session_state.form_cost = default_cost_usd
+        cost = i5.number_input("Custo Unit. (USD)", key="form_cost", min_value=0.0, step=0.5, format="%.2f", help="Padrão da config. lateral — editável por negócio")
+        unit_price = i6.number_input("Preço Unit. (R$)", key="form_unit_price", min_value=0.0, step=5.0, format="%.2f", help="Preço por teste cobrado do cliente")
+        # Auto-calculate total: unit price × qty
         if unit_price > 0 and qty > 0:
             st.session_state.form_vreal = round(unit_price * qty, 2)
-        v_real = i6.number_input("Valor Total (R$)", key="form_vreal", min_value=0.0, step=100.0, format="%.2f", help="Calculado automaticamente: Preço Unit. × Qtd")
-        notes = st.text_area("Notas", key="form_notes", height=68, help="Observações internas sobre o negócio")
+        v_real = st.number_input("Valor Total (R$)", key="form_vreal", min_value=0.0, step=100.0, format="%.2f", help="Calculado automaticamente: Preço Unit. × Qtd")
+        notes = st.text_area("Notas", key="form_notes", height=68)
 
     total_tax = total_tax_pct / 100
     custo_brl = qty * cost * st.session_state.dolar_live
@@ -909,14 +921,18 @@ with tab_list[2]:
                     with st.form(f"edit_form_{deal_id}"):
                         ef1, ef2, ef3 = st.columns(3)
                         edit_qty = ef1.number_input("Qtd Testes", value=int(pd_deal['qty']), min_value=0, step=1, key=f"eq_{deal_id}")
-                        edit_cost = ef2.number_input("Custo USD", value=float(pd_deal['cost_usd']), min_value=0.0, step=1.0, format="%.2f", key=f"ec_{deal_id}")
+                        edit_cost = ef2.number_input("Custo USD", value=float(pd_deal['cost_usd']), min_value=0.0, step=0.5, format="%.2f", key=f"ec_{deal_id}")
                         edit_unit = ef3.number_input("Preço Unit. R$", value=pd_up, min_value=0.0, step=5.0, format="%.2f", key=f"eu_{deal_id}")
-                        ef4, ef5 = st.columns(2)
-                        # Auto-calc total from unit price × qty
+                        ef4, ef5, ef6 = st.columns(3)
                         auto_edit_total = round(edit_unit * edit_qty, 2) if (edit_unit > 0 and edit_qty > 0) else float(pd_deal['v_real'])
-                        edit_vreal = ef4.number_input("Venda Total R$", value=auto_edit_total, min_value=0.0, step=100.0, format="%.2f", key=f"ev_{deal_id}")
+                        edit_vreal = ef4.number_input("Total R$", value=auto_edit_total, min_value=0.0, step=100.0, format="%.2f", key=f"ev_{deal_id}")
                         _mig_sk = _migrate_status(pd_sk)
                         edit_status = ef5.selectbox("Status", STATUS_LABELS, index=STATUS_KEYS.index(_mig_sk) if _mig_sk in STATUS_KEYS else 0, key=f"es_{deal_id}")
+                        try:
+                            _edt = date.fromisoformat(pd_deal['created_at'][:10]) if pd_deal.get('created_at') else date.today()
+                        except:
+                            _edt = date.today()
+                        edit_date = ef6.date_input("Data", value=_edt, key=f"edt_{deal_id}")
 
                         sf1, sf2 = st.columns(2)
                         if sf1.form_submit_button("Salvar", use_container_width=True):
