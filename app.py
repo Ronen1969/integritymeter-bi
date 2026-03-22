@@ -10,7 +10,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
-# streamlit.components.v1 removed — was creating invisible iframes that blocked button clicks
+import streamlit.components.v1 as components
 
 # ============================================================
 # 1. CONFIG & SUPABASE
@@ -73,16 +73,33 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color:
 </style>
 """, unsafe_allow_html=True)
 
-# Fix 5: JavaScript to auto-select number input content on focus (no iframe)
-st.markdown("""
+# Fix 5: Auto-select number inputs on focus (prevents 0.004 issue)
+# Uses components.html but immediately disables pointer-events on all height=0 iframes
+components.html("""
 <script>
-document.addEventListener('focusin', function(e) {
+var doc = window.parent.document;
+doc.addEventListener('focusin', function(e) {
     if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'number') {
         setTimeout(function() { e.target.select(); }, 50);
     }
 });
+// Disable pointer-events on all zero-height component iframes to prevent click blocking
+(function disableIframes() {
+    doc.querySelectorAll('iframe').forEach(function(f) {
+        if (f.height === '0' || f.style.height === '0px' || f.getBoundingClientRect().height < 2) {
+            f.style.pointerEvents = 'none';
+        }
+    });
+})();
+new MutationObserver(function() {
+    doc.querySelectorAll('iframe').forEach(function(f) {
+        if (f.height === '0' || f.style.height === '0px' || f.getBoundingClientRect().height < 2) {
+            f.style.pointerEvents = 'none';
+        }
+    });
+}).observe(doc.body, {childList: true, subtree: true});
 </script>
-""", unsafe_allow_html=True)
+""", height=0)
 
 # ============================================================
 # 3. AUTHENTICATION
@@ -253,29 +270,41 @@ if not st.session_state.user:
 # 4. STATUS DEFINITIONS
 # ============================================================
 STATUS_CONFIG = {
-    'proposta_enviada':   {'label': 'Proposta Enviada',   'color': '#6B7280', 'order': 1},
-    'em_negociacao':      {'label': 'Em Negociação',      'color': '#3B82F6', 'order': 2},
-    'aprovado':           {'label': 'Aprovado',           'color': '#10B981', 'order': 3},
-    'contrato_assinado':  {'label': 'Contrato Assinado',  'color': '#8B5CF6', 'order': 4},
-    'em_execucao':        {'label': 'Em Execução',        'color': '#F59E0B', 'order': 5},
-    'concluido':          {'label': 'Concluído',          'color': '#059669', 'order': 6},
-    'perdido':            {'label': 'Perdido',            'color': '#EF4444', 'order': 7},
+    'proposta_enviada':   {'label': 'Proposta',       'color': '#6B7280', 'order': 1},
+    'em_andamento':       {'label': 'Em Andamento',   'color': '#3B82F6', 'order': 2},
+    'concluido':          {'label': 'Concluído',      'color': '#059669', 'order': 3},
+    'perdido':            {'label': 'Perdido',        'color': '#EF4444', 'order': 4},
+}
+# Map old statuses to new ones for backward compatibility
+_STATUS_MIGRATION = {
+    'em_negociacao': 'em_andamento',
+    'aprovado': 'em_andamento',
+    'contrato_assinado': 'em_andamento',
+    'em_execucao': 'em_andamento',
 }
 STATUS_LABELS = [v['label'] for v in sorted(STATUS_CONFIG.values(), key=lambda x: x['order'])]
 STATUS_KEYS = [k for k in sorted(STATUS_CONFIG, key=lambda x: STATUS_CONFIG[x]['order'])]
 
-def status_key_to_label(key): return STATUS_CONFIG.get(key, {}).get('label', key)
+def _migrate_status(key):
+    """Map old statuses to new simplified ones."""
+    return _STATUS_MIGRATION.get(key, key)
+
+def status_key_to_label(key):
+    key = _migrate_status(key)
+    return STATUS_CONFIG.get(key, {}).get('label', key)
+
 def status_label_to_key(label):
     for k, v in STATUS_CONFIG.items():
         if v['label'] == label: return k
     return 'proposta_enviada'
+
 def status_dot(key):
-    """Return a small colored circle HTML span for the status."""
+    key = _migrate_status(key)
     color = STATUS_CONFIG.get(key, {}).get('color', '#6B7280')
     return f"<span style='display:inline-block;width:10px;height:10px;border-radius:50%;background:{color};margin-right:6px;'></span>"
 
 def status_dot_text(key):
-    """Return colored dot + label as plain text (for buttons)."""
+    key = _migrate_status(key)
     return f"● {STATUS_CONFIG.get(key, {}).get('label', key)}"
 
 # ============================================================
@@ -409,7 +438,8 @@ if '_pending_load' in st.session_state and st.session_state['_pending_load'] is 
     _vr = float(_deal['v_real'])
     st.session_state.form_unit_price = round(_vr / _qty, 2) if _qty > 0 else _vr
     st.session_state.form_vreal = _vr
-    st.session_state.form_status_idx = STATUS_KEYS.index(_deal['status']) if _deal['status'] in STATUS_KEYS else 0
+    _migrated = _migrate_status(_deal['status'])
+    st.session_state.form_status_idx = STATUS_KEYS.index(_migrated) if _migrated in STATUS_KEYS else 0
     st.session_state.form_notes = (_deal.get('clients', {}) or {}).get('notes', '') or ''
     st.session_state.selected_deal_id = _deal['id']
     st.session_state.just_loaded = True
@@ -421,6 +451,9 @@ if '_pending_load' in st.session_state and st.session_state['_pending_load'] is 
 try:
     deals_res = sb.table('deals').select('*, clients(name, notes)').order('updated_at', desc=True).execute()
     all_deals = deals_res.data or []
+    # Migrate old statuses in memory
+    for d in all_deals:
+        d['status'] = _migrate_status(d['status'])
 except:
     all_deals = []
 
@@ -453,51 +486,27 @@ with st.sidebar:
     if os.path.exists(logo_path):
         st.image(logo_path)
 
+    # Clean sidebar: user info + Sair as red text
     user_name = st.session_state.user_profile.get('full_name', '') or st.session_state.user.email
     user_role = st.session_state.user_profile.get('role', 'user')
     role_label = "Admin" if user_role == 'admin' else "Usuário"
-    st.markdown(f"<div class='user-badge'>{user_name} ({role_label})</div>", unsafe_allow_html=True)
+    st.markdown(f"""<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;'>
+        <span style='font-weight:600;font-size:14px;'>{user_name}</span>
+        <span style='color:#9CA3AF;font-size:12px;'>{role_label}</span>
+    </div>""", unsafe_allow_html=True)
 
-    col_sair, col_pw = st.columns(2)
-    # Fix 6: Logout with confirmation
-    if col_sair.button("Sair", key="logout_btn", use_container_width=True):
-        st.session_state['_confirm_logout'] = True
-    if st.session_state.get('_confirm_logout', False):
-        st.warning("Deseja realmente sair?")
-        cl1, cl2 = st.columns(2)
-        if cl1.button("Sim, sair", key="confirm_logout_yes"):
-            st.session_state['_confirm_logout'] = False
-            logout()
-            st.rerun()
-        if cl2.button("Cancelar", key="confirm_logout_no"):
-            st.session_state['_confirm_logout'] = False
-            st.rerun()
-    if col_pw.button("Alterar Senha", key="change_pw_btn", use_container_width=True):
-        st.session_state.show_pw_change = not st.session_state.get('show_pw_change', False)
-
-    if st.session_state.get('show_pw_change', False):
-        with st.form("change_password_form"):
-            new_pw = st.text_input("Nova senha", type="password")
-            confirm_pw = st.text_input("Confirmar nova senha", type="password")
-            pw_submitted = st.form_submit_button("Salvar Nova Senha")
-            if pw_submitted:
-                if not new_pw or len(new_pw) < 6:
-                    st.error("Senha deve ter pelo menos 6 caracteres.")
-                elif new_pw != confirm_pw:
-                    st.error("Senhas não conferem.")
-                else:
-                    try:
-                        sb.auth.update_user({"password": new_pw})
-                        st.success("Senha alterada com sucesso!")
-                        st.session_state.show_pw_change = False
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro: {e}")
+    # Sair as simple red text button
+    st.markdown("<style>.sair-btn button { background:transparent !important; color:#EF4444 !important; border:none !important; padding:2px 0 !important; min-height:28px !important; font-size:13px !important; text-decoration:underline !important; }</style>", unsafe_allow_html=True)
+    st.markdown("<div class='sair-btn'>", unsafe_allow_html=True)
+    if st.button("Sair", key="logout_btn"):
+        logout()
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("---")
-    st.caption("CÂMBIO EM TEMPO REAL")
+    st.caption("CÂMBIO USD/BRL")
     col_v, col_r = st.columns([2, 1])
-    col_v.markdown(f"### R$ {st.session_state.dolar_live:.3f}")
+    col_v.markdown(f"**R$ {st.session_state.dolar_live:.3f}**")
     if col_r.button("Att.", help="Atualizar câmbio"):
         old = st.session_state.dolar_live
         st.session_state.dolar_live = get_live_fx()
@@ -505,15 +514,11 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("---")
-    st.subheader("Configurações Fiscais")
-    tax_p = st.number_input("Lucro Presumido (%)", value=16.33, min_value=0.0, step=0.5, format="%.2f", key="tax_presumido", help="Alíquota do regime Lucro Presumido — imposto federal sobre o faturamento bruto")
-    adm_p = st.number_input("Taxa Administração (%)", value=2.50, min_value=0.0, step=0.5, format="%.2f", key="tax_admin", help="Taxa administrativa cobrada sobre o faturamento para custos operacionais")
+    st.caption("IMPOSTOS")
+    tax_p = st.number_input("Lucro Presumido (%)", value=16.33, min_value=0.0, step=0.5, format="%.2f", key="tax_presumido")
+    adm_p = st.number_input("Taxa Administração (%)", value=2.50, min_value=0.0, step=0.5, format="%.2f", key="tax_admin")
     total_tax_pct = tax_p + adm_p
-    st.caption(f"Total impostos: **{total_tax_pct:.2f}%**")
-
-    st.markdown("---")
-    st.caption(f"Negócios: **{len(all_deals)}** cadastrados")
-    st.caption("Gerencie seus negócios na aba Pipeline.")
+    st.caption(f"Total: **{total_tax_pct:.2f}%**")
 
 # ============================================================
 # 9. MAIN TABS
@@ -695,16 +700,12 @@ with tab_list[1]:
         qty = i3.number_input("Qtd Testes", key="form_qty", min_value=0, step=1, help="Quantidade de testes/avaliações a serem aplicados neste negócio")
         cost = i4.number_input("Custo Unitário (USD)", key="form_cost", min_value=0.0, step=1.0, format="%.2f", help="Custo GA por teste pago ao fornecedor em dólares americanos")
         i5, i6 = st.columns(2)
-        unit_price = i5.number_input("Preço Unitário ao Cliente (R$)", key="form_unit_price", min_value=0.0, step=5.0, format="%.2f", help="Preço por teste cobrado do cliente em reais")
-        # Auto-calculate total: unit price × qty
-        auto_total = round(unit_price * qty, 2) if (unit_price > 0 and qty > 0) else 0.0
-        if auto_total > 0 and st.session_state.form_vreal == 0.0:
-            st.session_state.form_vreal = auto_total
-        v_real = i6.number_input("Valor Total de Venda (R$)", key="form_vreal", min_value=0.0, step=100.0, format="%.2f", help="Valor total = Preço Unitário × Qtd (editável)")
-        # Show auto-calc hint
+        unit_price = i5.number_input("Preço Unitário (R$)", key="form_unit_price", min_value=0.0, step=5.0, format="%.2f", help="Preço por teste cobrado do cliente em reais")
+        # Auto-calculate total: unit price × qty — write directly to session_state
         if unit_price > 0 and qty > 0:
-            st.caption(f"Cálculo: R$ {unit_price:,.2f} × {qty} = **R$ {auto_total:,.2f}**" + (" ✓" if abs(v_real - auto_total) < 0.01 else f" (editado para R$ {v_real:,.2f})"))
-        notes = st.text_area("Notas", key="form_notes", height=68, help="Observações internas sobre o negócio (não visível ao cliente)")
+            st.session_state.form_vreal = round(unit_price * qty, 2)
+        v_real = i6.number_input("Valor Total (R$)", key="form_vreal", min_value=0.0, step=100.0, format="%.2f", help="Calculado automaticamente: Preço Unit. × Qtd")
+        notes = st.text_area("Notas", key="form_notes", height=68, help="Observações internas sobre o negócio")
 
     total_tax = total_tax_pct / 100
     custo_brl = qty * cost * st.session_state.dolar_live
@@ -914,7 +915,8 @@ with tab_list[2]:
                         # Auto-calc total from unit price × qty
                         auto_edit_total = round(edit_unit * edit_qty, 2) if (edit_unit > 0 and edit_qty > 0) else float(pd_deal['v_real'])
                         edit_vreal = ef4.number_input("Venda Total R$", value=auto_edit_total, min_value=0.0, step=100.0, format="%.2f", key=f"ev_{deal_id}")
-                        edit_status = ef5.selectbox("Status", STATUS_LABELS, index=STATUS_KEYS.index(pd_sk) if pd_sk in STATUS_KEYS else 0, key=f"es_{deal_id}")
+                        _mig_sk = _migrate_status(pd_sk)
+                        edit_status = ef5.selectbox("Status", STATUS_LABELS, index=STATUS_KEYS.index(_mig_sk) if _mig_sk in STATUS_KEYS else 0, key=f"es_{deal_id}")
 
                         sf1, sf2 = st.columns(2)
                         if sf1.form_submit_button("Salvar", use_container_width=True):
@@ -1132,6 +1134,25 @@ with tab_list[4]:
 if is_admin() and len(tab_list) > 5:
     with tab_list[5]:
         st.header("Painel Administrativo")
+
+        # --- Change own password ---
+        with st.expander("Alterar Minha Senha"):
+            with st.form("change_password_form"):
+                new_pw = st.text_input("Nova senha", type="password")
+                confirm_pw = st.text_input("Confirmar nova senha", type="password")
+                if st.form_submit_button("Salvar Nova Senha"):
+                    if not new_pw or len(new_pw) < 6:
+                        st.error("Senha deve ter pelo menos 6 caracteres.")
+                    elif new_pw != confirm_pw:
+                        st.error("Senhas não conferem.")
+                    else:
+                        try:
+                            sb.auth.update_user({"password": new_pw})
+                            st.success("Senha alterada com sucesso!")
+                        except Exception as e:
+                            st.error(f"Erro: {e}")
+
+        st.markdown("---")
 
         # --- Create new user ---
         st.subheader("Criar Novo Usuário")
