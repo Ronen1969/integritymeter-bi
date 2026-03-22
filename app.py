@@ -5,15 +5,12 @@ from datetime import datetime, date, timedelta
 from supabase import create_client
 import os
 import io
-<<<<<<< HEAD
 import json
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 import streamlit.components.v1 as components
-=======
->>>>>>> 2b45e05 (Initial deploy)
 
 # ============================================================
 # 1. CONFIG & SUPABASE
@@ -30,10 +27,6 @@ def get_supabase():
 
 @st.cache_resource
 def get_supabase_admin():
-<<<<<<< HEAD
-=======
-    """Admin client with service_role key for user management."""
->>>>>>> 2b45e05 (Initial deploy)
     if SUPABASE_SERVICE_KEY:
         return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     return None
@@ -48,7 +41,6 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #FFFFFF; }
-<<<<<<< HEAD
 [data-testid="stSidebar"] { background-color: #FFFFFF; border-right: 1px solid #F3F4F6; width: 280px !important; min-width: 280px !important; transition: margin-left 0.3s ease, opacity 0.3s ease; }
 .stButton>button {
     background-color: #8DAE10 !important; color: white !important;
@@ -59,19 +51,12 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color:
 }
 .main-card { padding: 30px; border-radius: 16px; background-color: #FFFFFF; border: 1px solid #F3F4F6; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.02); }
 /* sidebar deal buttons removed — deals now managed in Pipeline tab */
-=======
-[data-testid="stSidebar"] { background-color: #FFFFFF; border-right: 1px solid #F3F4F6; width: 400px !important; }
-.stButton>button { background-color: #8DAE10 !important; color: white !important; border-radius: 10px !important; height: 45px; font-weight: 600 !important; border: none !important; }
-.main-card { padding: 30px; border-radius: 16px; background-color: #FFFFFF; border: 1px solid #F3F4F6; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.02); }
-.delete-btn button { background-color: #EF4444 !important; font-size: 12px !important; height: 32px !important; padding: 0 8px !important; }
->>>>>>> 2b45e05 (Initial deploy)
 .loaded-banner { padding: 10px 16px; border-radius: 8px; background-color: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; font-weight: 500; margin-bottom: 8px; }
 .kpi-card { padding: 16px; border-radius: 12px; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; text-align: center; }
 .kpi-value { font-size: 28px; font-weight: 700; color: #8DAE10; margin: 4px 0; }
 .kpi-label { font-size: 11px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px; }
 .funnel-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
 .funnel-bar { height: 24px; border-radius: 4px; background: #8DAE10; display: flex; align-items: center; padding: 0 8px; color: white; font-size: 11px; font-weight: 600; }
-<<<<<<< HEAD
 .user-badge { padding: 6px 12px; border-radius: 20px; background: #F0FDF4; color: #166534; font-size: 12px; font-weight: 600; display: inline-block; margin-bottom: 8px; }
 .alert-card { padding: 12px 16px; border-radius: 10px; margin: 6px 0; font-size: 13px; }
 .alert-warning { background: #FFF7ED; border: 1px solid #FDBA74; color: #9A3412; }
@@ -116,13 +101,6 @@ new MutationObserver(function() {
 </script>
 """, height=0)
 
-=======
-.login-container { max-width: 400px; margin: 80px auto; padding: 40px; border-radius: 16px; border: 1px solid #F3F4F6; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
-.user-badge { padding: 6px 12px; border-radius: 20px; background: #F0FDF4; color: #166534; font-size: 12px; font-weight: 600; display: inline-block; margin-bottom: 8px; }
-</style>
-""", unsafe_allow_html=True)
-
->>>>>>> 2b45e05 (Initial deploy)
 # ============================================================
 # 3. AUTHENTICATION
 # ============================================================
@@ -135,14 +113,10 @@ def login(email, password):
     try:
         res = sb.auth.sign_in_with_password({"email": email, "password": password})
         st.session_state.user = res.user
-<<<<<<< HEAD
         # Fix 4: Store session tokens for persistence across refreshes
         if res.session:
             st.session_state['_access_token'] = res.session.access_token
             st.session_state['_refresh_token'] = res.session.refresh_token
-=======
-        # Load profile
->>>>>>> 2b45e05 (Initial deploy)
         profile = sb.table('user_profiles').select('*').eq('id', res.user.id).execute()
         if profile.data:
             if not profile.data[0].get('is_active', True):
@@ -153,7 +127,6 @@ def login(email, password):
     except Exception as e:
         return False, str(e)
 
-<<<<<<< HEAD
 def try_restore_session():
     """Fix 4: Try to restore session from Supabase's internal session."""
     try:
@@ -171,8 +144,6 @@ def try_restore_session():
         pass
     return False
 
-=======
->>>>>>> 2b45e05 (Initial deploy)
 def logout():
     try:
         sb.auth.sign_out()
@@ -180,7 +151,6 @@ def logout():
         pass
     st.session_state.user = None
     st.session_state.user_profile = None
-<<<<<<< HEAD
     # Fix 4: Clear stored session tokens
     for k in ['_access_token', '_refresh_token']:
         st.session_state.pop(k, None)
@@ -188,13 +158,10 @@ def logout():
 # Fix 4: Try to restore session on page reload
 if st.session_state.user is None:
     try_restore_session()
-=======
->>>>>>> 2b45e05 (Initial deploy)
 
 def is_admin():
     return st.session_state.user_profile and st.session_state.user_profile.get('role') == 'admin'
 
-<<<<<<< HEAD
 def send_welcome_email(to_email, user_name, temp_password, app_url=""):
     """Send welcome email with credentials to new user."""
     try:
@@ -275,8 +242,6 @@ def send_welcome_email(to_email, user_name, temp_password, app_url=""):
     except Exception as e:
         return False, str(e)
 
-=======
->>>>>>> 2b45e05 (Initial deploy)
 # --- LOGIN SCREEN ---
 if not st.session_state.user:
     col_spacer1, col_login, col_spacer2 = st.columns([1, 1.5, 1])
@@ -286,17 +251,9 @@ if not st.session_state.user:
             st.image(logo_path, width=250)
         else:
             st.markdown("## IntegrityMeter BI")
-<<<<<<< HEAD
         st.markdown("### Entrar")
         email = st.text_input("Email", placeholder="seu@email.com")
         password = st.text_input("Senha", type="password", placeholder="Sua senha")
-=======
-
-        st.markdown("### Entrar")
-        email = st.text_input("Email", placeholder="seu@email.com")
-        password = st.text_input("Senha", type="password", placeholder="Sua senha")
-
->>>>>>> 2b45e05 (Initial deploy)
         if st.button("Entrar", use_container_width=True):
             if email and password:
                 success, error = login(email, password)
@@ -306,10 +263,6 @@ if not st.session_state.user:
                     st.error(f"Falha no login: {error}")
             else:
                 st.warning("Preencha email e senha.")
-<<<<<<< HEAD
-=======
-
->>>>>>> 2b45e05 (Initial deploy)
         st.caption("Acesso restrito a funcionários da IntegrityMeter.")
     st.stop()
 
@@ -317,7 +270,6 @@ if not st.session_state.user:
 # 4. STATUS DEFINITIONS
 # ============================================================
 STATUS_CONFIG = {
-<<<<<<< HEAD
     'proposta_enviada':   {'label': 'Proposta',       'color': '#6B7280', 'order': 1},
     'em_andamento':       {'label': 'Em Andamento',   'color': '#3B82F6', 'order': 2},
     'concluido':          {'label': 'Concluído',      'color': '#059669', 'order': 3},
@@ -329,20 +281,10 @@ _STATUS_MIGRATION = {
     'aprovado': 'em_andamento',
     'contrato_assinado': 'em_andamento',
     'em_execucao': 'em_andamento',
-=======
-    'proposta_enviada':   {'label': 'Proposta Enviada',   'emoji': '📩', 'color': '#6B7280', 'order': 1},
-    'em_negociacao':      {'label': 'Em Negociação',      'emoji': '🤝', 'color': '#3B82F6', 'order': 2},
-    'aprovado':           {'label': 'Aprovado',           'emoji': '✅', 'color': '#10B981', 'order': 3},
-    'contrato_assinado':  {'label': 'Contrato Assinado',  'emoji': '📝', 'color': '#8B5CF6', 'order': 4},
-    'em_execucao':        {'label': 'Em Execução',        'emoji': '⚙️', 'color': '#F59E0B', 'order': 5},
-    'concluido':          {'label': 'Concluído',          'emoji': '🏆', 'color': '#059669', 'order': 6},
-    'perdido':            {'label': 'Perdido',            'emoji': '❌', 'color': '#EF4444', 'order': 7},
->>>>>>> 2b45e05 (Initial deploy)
 }
 STATUS_LABELS = [v['label'] for v in sorted(STATUS_CONFIG.values(), key=lambda x: x['order'])]
 STATUS_KEYS = [k for k in sorted(STATUS_CONFIG, key=lambda x: STATUS_CONFIG[x]['order'])]
 
-<<<<<<< HEAD
 def _migrate_status(key):
     """Map old statuses to new simplified ones."""
     return _STATUS_MIGRATION.get(key, key)
@@ -351,14 +293,10 @@ def status_key_to_label(key):
     key = _migrate_status(key)
     return STATUS_CONFIG.get(key, {}).get('label', key)
 
-=======
-def status_key_to_label(key): return STATUS_CONFIG.get(key, {}).get('label', key)
->>>>>>> 2b45e05 (Initial deploy)
 def status_label_to_key(label):
     for k, v in STATUS_CONFIG.items():
         if v['label'] == label: return k
     return 'proposta_enviada'
-<<<<<<< HEAD
 
 def status_dot(key):
     key = _migrate_status(key)
@@ -368,15 +306,11 @@ def status_dot(key):
 def status_dot_text(key):
     key = _migrate_status(key)
     return f"● {STATUS_CONFIG.get(key, {}).get('label', key)}"
-=======
-def status_emoji(key): return STATUS_CONFIG.get(key, {}).get('emoji', '📋')
->>>>>>> 2b45e05 (Initial deploy)
 
 # ============================================================
 # 5. FX RATE
 # ============================================================
 def get_live_fx():
-<<<<<<< HEAD
     """Fetch live USD/BRL rate with multiple fallback sources."""
     rate = None
     source = None
@@ -435,40 +369,16 @@ def get_live_fx():
 
 def get_cached_fx():
     """Return cached rate if fresh (<10 min), otherwise fetch live."""
-=======
-    try:
-        ticker = yf.Ticker("USDBRL=X")
-        rate = float(ticker.fast_info['last_price'])
-        try:
-            sb.table('fx_snapshots').insert({'rate': rate, 'source': 'yfinance'}).execute()
-        except:
-            pass
-        return rate
-    except:
-        try:
-            res = sb.table('fx_snapshots').select('rate').order('created_at', desc=True).limit(1).execute()
-            if res.data: return float(res.data[0]['rate'])
-        except:
-            pass
-        return 5.30
-
-def get_cached_fx():
->>>>>>> 2b45e05 (Initial deploy)
     try:
         res = sb.table('fx_snapshots').select('rate,created_at').order('created_at', desc=True).limit(1).execute()
         if res.data:
             cached_time = datetime.fromisoformat(res.data[0]['created_at'].replace('Z', '+00:00'))
-<<<<<<< HEAD
             if (datetime.now(cached_time.tzinfo) - cached_time).total_seconds() < 600:
-=======
-            if (datetime.now(cached_time.tzinfo) - cached_time).total_seconds() < 900:
->>>>>>> 2b45e05 (Initial deploy)
                 return float(res.data[0]['rate'])
     except:
         pass
     return get_live_fx()
 
-<<<<<<< HEAD
 def get_fx_history(days=30):
     """Get FX rate history from snapshots table."""
     try:
@@ -483,14 +393,45 @@ def get_fx_history(days=30):
         pass
     return pd.DataFrame()
 
-=======
->>>>>>> 2b45e05 (Initial deploy)
+# ============================================================
+# 5b. USER SETTINGS (persisted in Supabase app_settings table)
+# ============================================================
+def _get_setting(key, default=""):
+    """Load a user setting from app_settings table."""
+    try:
+        uid = str(st.session_state.user.id)
+        res = sb.table('app_settings').select('value').eq('user_id', uid).eq('key', key).execute()
+        if res.data:
+            return res.data[0]['value']
+    except:
+        pass
+    return default
+
+def _save_setting(key, value):
+    """Save a user setting to app_settings table (upsert)."""
+    try:
+        uid = str(st.session_state.user.id)
+        sb.table('app_settings').upsert(
+            {'user_id': uid, 'key': key, 'value': str(value), 'updated_at': datetime.now().isoformat()},
+            on_conflict='user_id,key'
+        ).execute()
+    except:
+        pass
+
 # ============================================================
 # 6. SESSION STATE
 # ============================================================
 if 'dolar_live' not in st.session_state:
     st.session_state.dolar_live = get_cached_fx()
-<<<<<<< HEAD
+
+# Load persisted month target
+if '_month_target_loaded' not in st.session_state:
+    saved_target = _get_setting('month_target', '100000')
+    try:
+        st.session_state._saved_month_target = float(saved_target)
+    except:
+        st.session_state._saved_month_target = 100000.0
+    st.session_state._month_target_loaded = True
 
 FORM_DEFAULTS = {
     'selected_deal_id': None,
@@ -581,23 +522,11 @@ display:flex;align-items:center;justify-content:center;font-size:16px;color:#6B7
 box-shadow:0 1px 3px rgba(0,0,0,0.1);user-select:none;" title="Ocultar/mostrar barra lateral">◀</div>
 """, unsafe_allow_html=True)
 
-=======
-for key, default in [('selected_deal_id', None), ('form_client', ''), ('form_qty', 200),
-                      ('form_cost', 4.0), ('form_vreal', 14000.0), ('form_status_idx', 0),
-                      ('form_notes', ''), ('just_loaded', False)]:
-    if key not in st.session_state:
-        st.session_state[key] = default
-
-# ============================================================
-# 7. SIDEBAR
-# ============================================================
->>>>>>> 2b45e05 (Initial deploy)
 with st.sidebar:
     logo_path = os.path.expanduser("~/Desktop/integrity-meter-logo.png")
     if os.path.exists(logo_path):
         st.image(logo_path)
 
-<<<<<<< HEAD
     # Clean sidebar: user info + Sair as red text
     user_name = st.session_state.user_profile.get('full_name', '') or st.session_state.user.email
     user_role = st.session_state.user_profile.get('role', 'user')
@@ -617,33 +546,24 @@ with st.sidebar:
 
     st.markdown("---")
     st.caption("CÂMBIO USD/BRL")
-    col_v, col_r = st.columns([2, 1])
-    col_v.markdown(f"**R$ {st.session_state.dolar_live:.3f}**")
-    if col_r.button("Att.", help="Atualizar câmbio"):
-=======
-    # User info
-    user_name = st.session_state.user_profile.get('full_name', '') or st.session_state.user.email
-    user_role = st.session_state.user_profile.get('role', 'user')
-    role_label = "Admin" if user_role == 'admin' else "Usuário"
-    st.markdown(f"<div class='user-badge'>👤 {user_name} ({role_label})</div>", unsafe_allow_html=True)
-
-    if st.button("🚪 Sair", key="logout_btn"):
-        logout()
-        st.rerun()
-
-    st.markdown("---")
-    st.caption("CÂMBIO EM TEMPO REAL")
-    col_v, col_r = st.columns([2, 1])
-    col_v.markdown(f"### R$ {st.session_state.dolar_live:.3f}")
-    if col_r.button("🔄", help="Atualizar câmbio"):
->>>>>>> 2b45e05 (Initial deploy)
+    # Editable rate — user can type directly or click Att. to fetch live
+    st.session_state.dolar_live = st.number_input(
+        "Taxa câmbio", value=st.session_state.dolar_live,
+        min_value=0.01, step=0.01, format="%.4f",
+        key="fx_manual_input", help="Edite manualmente ou clique Att. para buscar online",
+        label_visibility="collapsed"
+    )
+    if st.button("Att. Câmbio Online", help="Buscar taxa atual USD/BRL", use_container_width=True):
         old = st.session_state.dolar_live
-        st.session_state.dolar_live = get_live_fx()
-        st.toast(f"Câmbio: R$ {st.session_state.dolar_live:.3f}" if st.session_state.dolar_live != old else "Câmbio já atualizado.")
+        new_rate = get_live_fx()
+        if new_rate and new_rate != old:
+            st.session_state.dolar_live = new_rate
+            st.toast(f"Câmbio atualizado: R$ {new_rate:.4f}")
+        else:
+            st.toast(f"Câmbio mantido: R$ {old:.4f} (APIs indisponíveis ou mesmo valor)")
         st.rerun()
 
     st.markdown("---")
-<<<<<<< HEAD
     st.caption("CONFIGURAÇÕES")
     default_cost_usd = st.number_input("Custo Padrão USD", value=4.00, min_value=0.0, step=0.5, format="%.2f", key="default_cost_usd", help="Custo unitário padrão em USD — pré-preenchido nos novos negócios")
     tax_p = st.number_input("Lucro Presumido (%)", value=16.33, min_value=0.0, step=0.5, format="%.2f", key="tax_presumido")
@@ -708,7 +628,11 @@ with tab_list[0]:
 
         with col_target:
             st.subheader("Meta Mensal")
-            month_target = st.number_input("Meta de Vendas (R$)", value=100000.0, min_value=0.0, step=5000.0, format="%.0f", key="month_target", help="Clique +/- para ajustar em R$ 5.000 ou digite o valor desejado")
+            month_target = st.number_input("Meta de Vendas (R$)", value=st.session_state._saved_month_target, min_value=0.0, step=5000.0, format="%.0f", key="month_target", help="Clique +/- para ajustar em R$ 5.000 ou digite o valor desejado")
+            # Persist if changed
+            if month_target != st.session_state._saved_month_target:
+                _save_setting('month_target', month_target)
+                st.session_state._saved_month_target = month_target
             month_won = df_won[df_won['created_at_dt'] >= month_start]['v_real'].sum() if not df_won.empty else 0
             month_profit = df_won[df_won['created_at_dt'] >= month_start]['profit'].sum() if not df_won.empty else 0
             progress_pct = min((month_won / month_target * 100), 100) if month_target > 0 else 0
@@ -744,11 +668,12 @@ with tab_list[0]:
             else:
                 st.dataframe(monthly, use_container_width=True, hide_index=True)
 
-        # --- Alerts ---
+        # --- Alerts & Insights ---
         with col_alerts:
-            st.subheader("Alertas")
-            alerts_found = False
+            st.subheader("Alertas & Insights")
+            alerts = []  # (priority, html) — priority: 1=danger, 2=warning, 3=info/positive
 
+            # 1. Stale deals — need follow-up
             for deal in all_deals:
                 if deal['status'] in ['concluido', 'perdido']:
                     continue
@@ -757,23 +682,54 @@ with tab_list[0]:
                 age_days = (datetime.now(created.tzinfo) - created).days
 
                 if age_days >= 14:
-                    alerts_found = True
-                    st.markdown(f"<div class='alert-card alert-danger'><strong>{cn}</strong> — {age_days} dias sem movimentação ({status_key_to_label(deal['status'])})</div>", unsafe_allow_html=True)
+                    alerts.append((1, f"<div class='alert-card alert-danger'>⏰ <strong>{cn}</strong> — {age_days} dias sem movimentação. Ação: entre em contato ou marque como perdido.</div>"))
                 elif age_days >= 7:
-                    alerts_found = True
-                    st.markdown(f"<div class='alert-card alert-warning'><strong>{cn}</strong> — {age_days} dias parado ({status_key_to_label(deal['status'])})</div>", unsafe_allow_html=True)
+                    alerts.append((2, f"<div class='alert-card alert-warning'>⏳ <strong>{cn}</strong> — {age_days} dias parado ({status_key_to_label(deal['status'])}). Considere fazer follow-up.</div>"))
 
-            # FX rate alert
+            # 2. Low margin deals — active deals with margin < 15%
+            for deal in all_deals:
+                if deal['status'] in ['concluido', 'perdido']:
+                    continue
+                mg = float(deal.get('margin', 0))
+                cn = (deal.get('clients', {}) or {}).get('name', '?')
+                if 0 < mg < 15:
+                    alerts.append((2, f"<div class='alert-card alert-warning'>📉 <strong>{cn}</strong> — margem baixa ({mg:.0f}%). Revise preço ou custos.</div>"))
+
+            # 3. FX rate alerts
             fx = st.session_state.dolar_live
             if fx >= 5.50:
-                alerts_found = True
-                st.markdown(f"<div class='alert-card alert-warning'>Dólar alto: R$ {fx:.3f} — considere aguardar para fechar custos</div>", unsafe_allow_html=True)
+                alerts.append((2, f"<div class='alert-card alert-warning'>💵 Dólar alto: R$ {fx:.3f} — seus custos em BRL estão elevados. Considere reajustar preços.</div>"))
             elif fx <= 4.80:
-                alerts_found = True
-                st.markdown(f"<div class='alert-card alert-info'>Dólar baixo: R$ {fx:.3f} — bom momento para fechar custos</div>", unsafe_allow_html=True)
+                alerts.append((3, f"<div class='alert-card alert-info'>💵 Dólar baixo: R$ {fx:.3f} — bom momento para fechar negócios com margem alta.</div>"))
 
-            if not alerts_found:
-                st.markdown("<div class='alert-card alert-info'>Nenhum alerta no momento. Tudo em dia!</div>", unsafe_allow_html=True)
+            # 4. Month target progress
+            if month_target > 0:
+                if progress_pct >= 100:
+                    alerts.append((3, f"<div class='alert-card alert-info' style='background:#F0FDF4;border-color:#BBF7D0;color:#166534;'>🎯 Meta atingida! R$ {month_won:,.0f} de R$ {month_target:,.0f}. Parabéns!</div>"))
+                elif progress_pct < 30 and now.day > 15:
+                    alerts.append((1, f"<div class='alert-card alert-danger'>🎯 Meta em risco: apenas {progress_pct:.0f}% da meta e já passou da metade do mês.</div>"))
+
+            # 5. No deals this month
+            if month_deals == 0:
+                alerts.append((2, f"<div class='alert-card alert-warning'>📋 Nenhum negócio criado este mês. Hora de prospectar!</div>"))
+
+            # 6. High concentration — single client > 50% pipeline
+            if not df_active.empty and len(df_active) > 1:
+                client_totals = df_active.groupby('client_name')['v_real'].sum()
+                pipeline_total = client_totals.sum()
+                if pipeline_total > 0:
+                    top_client = client_totals.idxmax()
+                    top_pct = client_totals.max() / pipeline_total * 100
+                    if top_pct > 50:
+                        alerts.append((2, f"<div class='alert-card alert-warning'>⚠️ <strong>{top_client}</strong> representa {top_pct:.0f}% do pipeline. Diversifique sua carteira.</div>"))
+
+            # Sort by priority and display
+            alerts.sort(key=lambda x: x[0])
+            if alerts:
+                for _, html in alerts:
+                    st.markdown(html, unsafe_allow_html=True)
+            else:
+                st.markdown("<div class='alert-card alert-info' style='background:#F0FDF4;border-color:#BBF7D0;color:#166534;'>✅ Tudo em dia! Nenhum alerta no momento.</div>", unsafe_allow_html=True)
 
             # --- Top Clients ---
             st.markdown("<br>", unsafe_allow_html=True)
@@ -800,61 +756,10 @@ with tab_list[0]:
                     </div>""", unsafe_allow_html=True)
             else:
                 st.info("Conclua negócios para ver o ranking.")
-=======
-    st.subheader("Configurações Fiscais")
-    tax_p = st.number_input("Lucro Presumido (%)", value=16.33)
-    adm_p = st.number_input("Taxa Adm (%)", value=3.00)
-
-    st.markdown("---")
-    st.caption("NEGÓCIOS SALVOS")
-    try:
-        deals_res = sb.table('deals').select('*, clients(name, notes)').order('updated_at', desc=True).execute()
-        all_deals = deals_res.data or []
-    except:
-        all_deals = []
-
-    if not all_deals:
-        st.info("Nenhum negócio salvo.")
-    else:
-        for deal in all_deals:
-            col_load, col_del = st.columns([4, 1])
-            cn = deal.get('clients', {}).get('name', '?') if deal.get('clients') else '?'
-            sk = deal['status']
-            dd = deal['created_at'][:10] if deal.get('created_at') else ''
-
-            if col_load.button(f"{status_emoji(sk)} {cn} | {dd}", key=f"btn_{deal['id']}"):
-                st.session_state.form_client = cn
-                st.session_state.form_qty = int(deal['qty'])
-                st.session_state.form_cost = float(deal['cost_usd'])
-                st.session_state.form_vreal = float(deal['v_real'])
-                st.session_state.form_status_idx = STATUS_KEYS.index(sk) if sk in STATUS_KEYS else 0
-                st.session_state.form_notes = (deal.get('clients', {}) or {}).get('notes', '') or ''
-                st.session_state.selected_deal_id = deal['id']
-                st.session_state.just_loaded = True
-                st.rerun()
-
-            with col_del:
-                st.markdown("<div class='delete-btn'>", unsafe_allow_html=True)
-                if st.button("🗑️", key=f"del_{deal['id']}"):
-                    sb.table('deals').delete().eq('id', deal['id']).execute()
-                    if st.session_state.selected_deal_id == deal['id']:
-                        st.session_state.selected_deal_id = None
-                    st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
-
-# ============================================================
-# 8. MAIN TABS
-# ============================================================
-tabs = ["🛡️ Gestão de Margem", "📊 Pipeline & Conversão", "📈 Relatório & Exportação"]
-if is_admin():
-    tabs.append("⚙️ Admin")
-tab_list = st.tabs(tabs)
->>>>>>> 2b45e05 (Initial deploy)
 
 # ============================================================
 # TAB 1: MARGIN CALCULATOR
 # ============================================================
-<<<<<<< HEAD
 with tab_list[1]:
     is_editing = st.session_state.selected_deal_id is not None
 
@@ -872,21 +777,14 @@ with tab_list[1]:
         st.markdown(f"""<div class='loaded-banner'>
             Editando: <strong>{st.session_state.form_client}</strong>
         </div>""", unsafe_allow_html=True)
-=======
-with tab_list[0]:
-    if st.session_state.just_loaded:
-        st.markdown(f"<div class='loaded-banner'>✅ Negócio carregado: <strong>{st.session_state.form_client}</strong></div>", unsafe_allow_html=True)
-        st.session_state.just_loaded = False
->>>>>>> 2b45e05 (Initial deploy)
 
     col_in, col_out = st.columns([1.8, 1], gap="large")
     with col_in:
         i1, i2 = st.columns(2)
-<<<<<<< HEAD
         client_name = i1.text_input("Cliente", key="form_client", help="Nome da empresa ou pessoa jurídica contratante")
         status_deal = i2.selectbox("Status", STATUS_LABELS, index=st.session_state.form_status_idx)
         i3, i4 = st.columns(2)
-        deal_date = i3.date_input("Data", key="form_date", help="Data do negócio")
+        deal_date = i3.date_input("Data", key="form_date", format="DD/MM/YYYY", help="Data do negócio")
         qty = i4.number_input("Qtd Testes", key="form_qty", min_value=0, step=1)
         i5, i6 = st.columns(2)
         # Pre-fill cost from sidebar default if this is a new deal with cost=0
@@ -904,18 +802,6 @@ with tab_list[0]:
     custo_brl = qty * cost * st.session_state.dolar_live
     imposto_presumido = v_real * (tax_p / 100)
     imposto_admin = v_real * (adm_p / 100)
-=======
-        client_name = i1.text_input("Cliente", key="form_client")
-        status_deal = i2.selectbox("Status", STATUS_LABELS, index=st.session_state.form_status_idx)
-        i3, i4 = st.columns(2)
-        qty = i3.number_input("Qtd Testes", key="form_qty", min_value=0)
-        cost = i4.number_input("Custo (USD)", key="form_cost", min_value=0.0, format="%.2f")
-        v_real = st.number_input("Venda (R$)", key="form_vreal", min_value=0.0, format="%.2f")
-        notes = st.text_area("Notas", key="form_notes", height=68)
-
-    total_tax = (tax_p + adm_p) / 100
-    custo_brl = qty * cost * st.session_state.dolar_live
->>>>>>> 2b45e05 (Initial deploy)
     impostos = v_real * total_tax
     profit = v_real - custo_brl - impostos
     margin = (profit / v_real * 100) if v_real > 0 else 0
@@ -925,7 +811,6 @@ with tab_list[0]:
     else: margin_color, profit_color = "#DC2626", "#DC2626"
 
     with col_out:
-<<<<<<< HEAD
         if v_real > 0:
             st.markdown(f"""<div class='main-card'>
                 <p style='color:#9CA3AF; font-size:12px;'>LUCRO LÍQUIDO</p>
@@ -941,23 +826,12 @@ with tab_list[0]:
 
         st.markdown("<br>", unsafe_allow_html=True)
         with st.expander("Detalhamento do Cálculo", expanded=(v_real > 0)):
-=======
-        st.markdown(f"""<div class='main-card'>
-            <p style='color:#9CA3AF; font-size:12px;'>LUCRO LÍQUIDO</p>
-            <h1 style='color:{profit_color}; margin:0; font-size:42px;'>R$ {float(profit):,.2f}</h1>
-            <p style='color:{margin_color}; font-weight:600;'>{margin:.1f}% Margem Real</p>
-        </div>""", unsafe_allow_html=True)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        with st.expander("📊 Detalhamento do Cálculo"):
->>>>>>> 2b45e05 (Initial deploy)
             st.markdown(f"""
 | Item | Valor |
 |---|---|
 | Custo Total (USD) | $ {qty * cost:,.2f} |
 | Câmbio USD→BRL | R$ {st.session_state.dolar_live:.3f} |
 | **Custo Total (BRL)** | **R$ {custo_brl:,.2f}** |
-<<<<<<< HEAD
 | Lucro Presumido ({tax_p:.2f}%) | R$ {imposto_presumido:,.2f} |
 | Taxa Administração ({adm_p:.2f}%) | R$ {imposto_admin:,.2f} |
 | **Total Impostos ({total_tax_pct:.2f}%)** | **R$ {impostos:,.2f}** |
@@ -974,15 +848,6 @@ with tab_list[0]:
             c2 = None
 
         if c1.button(save_label, use_container_width=True):
-=======
-| Impostos ({tax_p + adm_p:.2f}%) | R$ {impostos:,.2f} |
-| Venda (BRL) | R$ {v_real:,.2f} |
-| **Lucro Líquido** | **R$ {profit:,.2f}** |
-""")
-        st.markdown("<br>", unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        if c1.button("💾 SALVAR OU ATUALIZAR"):
->>>>>>> 2b45e05 (Initial deploy)
             if not client_name.strip():
                 st.error("Preencha o nome do cliente.")
             elif qty <= 0 or cost <= 0 or v_real <= 0:
@@ -1001,17 +866,12 @@ with tab_list[0]:
                         'created_by': str(st.session_state.user.id),
                         'created_by_email': st.session_state.user.email,
                     }
-<<<<<<< HEAD
                     if is_editing:
-=======
-                    if st.session_state.selected_deal_id:
->>>>>>> 2b45e05 (Initial deploy)
                         old = sb.table('deals').select('status').eq('id', st.session_state.selected_deal_id).execute()
                         old_status = old.data[0]['status'] if old.data else None
                         sb.table('deals').update(deal_data).eq('id', st.session_state.selected_deal_id).execute()
                         if old_status and old_status != status_key:
                             sb.table('deal_events').insert({'deal_id': st.session_state.selected_deal_id, 'event_type': 'status_change', 'old_value': old_status, 'new_value': status_key}).execute()
-<<<<<<< HEAD
                         st.toast(f"Negócio '{client_name}' atualizado!")
                     else:
                         new_deal = sb.table('deals').insert(deal_data).execute()
@@ -1026,24 +886,10 @@ with tab_list[0]:
             if c2.button("DUPLICAR", use_container_width=True, help="Cria uma cópia deste negócio como novo"):
                 st.session_state.selected_deal_id = None
                 st.toast("Duplicado! Altere os dados e clique 'Criar Negócio'.")
-=======
-                    else:
-                        new_deal = sb.table('deals').insert(deal_data).execute()
-                        st.session_state.selected_deal_id = new_deal.data[0]['id']
-                        sb.table('deal_events').insert({'deal_id': new_deal.data[0]['id'], 'event_type': 'created', 'new_value': status_key}).execute()
-                    st.success(f"Negócio '{client_name}' salvo!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erro: {e}")
-        if c2.button("📋 DUPLICAR"):
-            st.session_state.selected_deal_id = None
-            st.toast("Duplicado! Altere e salve como novo.")
->>>>>>> 2b45e05 (Initial deploy)
 
 # ============================================================
 # TAB 2: PIPELINE
 # ============================================================
-<<<<<<< HEAD
 with tab_list[2]:
     st.header("Pipeline de Vendas")
 
@@ -1054,7 +900,7 @@ with tab_list[2]:
         fc1, fc2, fc3 = st.columns(3)
         filter_status = fc1.multiselect("Filtrar por Status", STATUS_LABELS, default=[], key="pipe_filter_status")
         filter_client = fc2.text_input("Buscar Cliente", key="pipe_filter_client")
-        filter_date = fc3.date_input("A partir de", value=date.today() - timedelta(days=90), key="pipe_filter_date")
+        filter_date = fc3.date_input("A partir de", value=date.today() - timedelta(days=90), format="DD/MM/YYYY", key="pipe_filter_date")
 
         df = pd.DataFrame(all_deals)
         df['client_name'] = df['clients'].apply(lambda c: c.get('name', '?') if c else '?')
@@ -1109,7 +955,10 @@ with tab_list[2]:
                 pd_mg = float(pd_deal['margin'])
                 pd_qt = int(pd_deal['qty'])
                 pd_up = round(pd_vr / pd_qt, 2) if pd_qt > 0 else pd_vr
-                pd_dt = pd_deal['created_at'][:10] if pd_deal.get('created_at') else ''
+                try:
+                    pd_dt = datetime.fromisoformat(pd_deal['created_at'][:10]).strftime('%d/%m/%Y') if pd_deal.get('created_at') else ''
+                except:
+                    pd_dt = pd_deal['created_at'][:10] if pd_deal.get('created_at') else ''
                 deal_id = pd_deal['id']
                 mg_color = "#059669" if pd_mg >= 30 else "#D97706" if pd_mg >= 10 else "#DC2626"
 
@@ -1152,10 +1001,17 @@ with tab_list[2]:
                     st.markdown(f"<div style='padding:4px 0 8px 0;border-left:3px solid #8DAE10;padding-left:16px;margin:4px 0;'>", unsafe_allow_html=True)
                     st.markdown(f"**Editando: {pd_cn}**")
                     with st.form(f"edit_form_{deal_id}"):
+                        # Row 0: Client name + notes (editable)
+                        _pd_notes = (pd_deal.get('clients', {}) or {}).get('notes', '') or ''
+                        en1, en2 = st.columns([1, 2])
+                        edit_client_name = en1.text_input("Cliente", value=pd_cn, key=f"ecn_{deal_id}")
+                        edit_notes = en2.text_input("Observações", value=_pd_notes, key=f"eno_{deal_id}")
+                        # Row 1: qty, cost, unit price
                         ef1, ef2, ef3 = st.columns(3)
                         edit_qty = ef1.number_input("Qtd Testes", value=int(pd_deal['qty']), min_value=0, step=1, key=f"eq_{deal_id}")
                         edit_cost = ef2.number_input("Custo USD", value=float(pd_deal['cost_usd']), min_value=0.0, step=0.5, format="%.2f", key=f"ec_{deal_id}")
                         edit_unit = ef3.number_input("Preço Unit. R$", value=pd_up, min_value=0.0, step=5.0, format="%.2f", key=f"eu_{deal_id}")
+                        # Row 2: total, status, date
                         ef4, ef5, ef6 = st.columns(3)
                         auto_edit_total = round(edit_unit * edit_qty, 2) if (edit_unit > 0 and edit_qty > 0) else float(pd_deal['v_real'])
                         edit_vreal = ef4.number_input("Total R$", value=auto_edit_total, min_value=0.0, step=100.0, format="%.2f", key=f"ev_{deal_id}")
@@ -1165,7 +1021,7 @@ with tab_list[2]:
                             _edt = date.fromisoformat(pd_deal['created_at'][:10]) if pd_deal.get('created_at') else date.today()
                         except:
                             _edt = date.today()
-                        edit_date = ef6.date_input("Data", value=_edt, key=f"edt_{deal_id}")
+                        edit_date = ef6.date_input("Data", value=_edt, format="DD/MM/YYYY", key=f"edt_{deal_id}")
 
                         sf1, sf2 = st.columns(2)
                         if sf1.form_submit_button("Salvar", use_container_width=True):
@@ -1189,9 +1045,23 @@ with tab_list[2]:
                                 if pd_sk != edit_status_key:
                                     sb.table('deal_events').insert({'deal_id': deal_id, 'event_type': 'status_change', 'old_value': pd_sk, 'new_value': edit_status_key}).execute()
 
+                                # Update client name/notes if changed
+                                if edit_client_name.strip():
+                                    client_res = sb.table('clients').upsert(
+                                        {'name': edit_client_name.strip(), 'notes': edit_notes.strip()},
+                                        on_conflict='name'
+                                    ).execute()
+                                    if client_res.data:
+                                        update_data['client_id'] = client_res.data[0]['id']
+                                    # Also update notes on old client if name didn't change
+                                    if edit_client_name.strip() == pd_cn:
+                                        old_client_id = pd_deal.get('client_id')
+                                        if old_client_id:
+                                            sb.table('clients').update({'notes': edit_notes.strip()}).eq('id', old_client_id).execute()
+
                                 sb.table('deals').update(update_data).eq('id', deal_id).execute()
                                 st.session_state[edit_key] = False
-                                st.toast(f"'{pd_cn}' atualizado!")
+                                st.toast(f"'{edit_client_name.strip()}' atualizado!")
                                 st.rerun()
                             except Exception as e:
                                 st.error(f"Erro: {e}")
@@ -1218,49 +1088,10 @@ with tab_list[2]:
                     if dc2.button("Cancelar", key=f"pn_{deal_id}"):
                         st.session_state[del_key] = False
                         st.rerun()
-=======
-with tab_list[1]:
-    st.header("📊 Pipeline de Vendas")
-    if not all_deals:
-        st.info("Nenhum negócio cadastrado.")
-    else:
-        df = pd.DataFrame(all_deals)
-        df['client_name'] = df['clients'].apply(lambda c: c.get('name', '?') if c else '?')
-        tp = df[~df['status'].isin(['concluido','perdido'])]['v_real'].astype(float).sum()
-        won = df[df['status']=='concluido']; lost = df[df['status']=='perdido']
-        tw, tl = len(won), len(lost)
-        ta = len(df) - tw - tl
-        wr = (tw/(tw+tl)*100) if (tw+tl)>0 else 0
-        if not won.empty:
-            wc = won.copy(); wc['cd'] = pd.to_datetime(wc['created_at']); wc['cld'] = pd.to_datetime(wc['closed_at'])
-            v = wc.dropna(subset=['cld']); ac = (v['cld']-v['cd']).dt.days.mean() if not v.empty else 0
-        else: ac = 0
-
-        k1,k2,k3,k4,k5 = st.columns(5)
-        for col, lbl, val in [(k1,"Pipeline Ativo",f"R$ {tp:,.0f}"),(k2,"Negócios Ativos",str(ta)),(k3,"Taxa Conversão",f"{wr:.0f}%"),(k4,"Ganhos/Perdidos",f"{tw}/{tl}"),(k5,"Ciclo Médio",f"{ac:.0f}d")]:
-            col.markdown(f"<div class='kpi-card'><div class='kpi-label'>{lbl}</div><div class='kpi-value'>{val}</div></div>", unsafe_allow_html=True)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.subheader("🔽 Funil de Conversão")
-        sc = df.groupby('status').size().to_dict()
-        mx = max(sc.values()) if sc else 1
-        for sk in STATUS_KEYS:
-            cfg = STATUS_CONFIG[sk]; cnt = sc.get(sk, 0)
-            if cnt == 0: continue
-            bw = max(int(cnt/mx*100), 8)
-            vs = df[df['status']==sk]['v_real'].astype(float).sum()
-            st.markdown(f"<div class='funnel-row'><div style='width:160px;font-size:13px;font-weight:500;'>{cfg['emoji']} {cfg['label']}</div><div class='funnel-bar' style='width:{bw}%;background:{cfg['color']};'>{cnt} neg. | R$ {vs:,.0f}</div></div>", unsafe_allow_html=True)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.subheader("📋 Todos os Negócios")
-        td = [{'Status': f"{status_emoji(d['status'])} {status_key_to_label(d['status'])}", 'Cliente': (d.get('clients',{}) or {}).get('name','?'), 'Qtd': d['qty'], 'Venda R$': f"R$ {float(d['v_real']):,.2f}", 'Lucro R$': f"R$ {float(d['profit']):,.2f}", 'Margem': f"{float(d['margin']):.1f}%", 'Criado por': d.get('created_by_email',''), 'Data': d['created_at'][:10] if d.get('created_at') else ''} for d in all_deals]
-        st.dataframe(pd.DataFrame(td), use_container_width=True, hide_index=True)
->>>>>>> 2b45e05 (Initial deploy)
 
 # ============================================================
 # TAB 3: REPORTS
 # ============================================================
-<<<<<<< HEAD
 with tab_list[3]:
     st.header("Relatórios")
 
@@ -1363,7 +1194,7 @@ with tab_list[3]:
                 'Lucro R$': f"R$ {float(d['profit']):,.2f}",
                 'Margem': f"{float(d['margin']):.1f}%",
                 'Criado por': d.get('created_by_email',''),
-                'Data': d['created_at'][:10] if d.get('created_at') else ''
+                'Data': datetime.fromisoformat(d['created_at'][:10]).strftime('%d/%m/%Y') if d.get('created_at') else ''
             } for d in all_deals]
             st.dataframe(pd.DataFrame(td), use_container_width=True, hide_index=True)
 
@@ -1448,84 +1279,13 @@ if is_admin() and len(tab_list) > 5:
             st.error("Service role key não configurada. Adicione SUPABASE_SERVICE_KEY nos secrets.")
         else:
             app_url = st.secrets.get("APP_URL", "")
-=======
-with tab_list[2]:
-    st.header("📈 Relatório de Negócios Concluídos")
-    closed = [d for d in all_deals if d['status']=='concluido']
-    if not closed:
-        st.warning("Nenhum negócio concluído encontrado.")
-    else:
-        cdf = pd.DataFrame(closed)
-        cdf['client_name'] = cdf['clients'].apply(lambda c: c.get('name','?') if c else '?')
-        for c in ['v_real','profit','cost_usd','margin']: cdf[c] = cdf[c].astype(float)
-        cdf['qty'] = cdf['qty'].astype(int)
-        tc = 'closed_at' if cdf['closed_at'].notna().any() else 'created_at'
-        cdf['ts'] = pd.to_datetime(cdf[tc], errors='coerce')
-        cdf['month_name'] = cdf['ts'].dt.strftime('%Y-%m')
-        cdf['year'] = cdf['ts'].dt.year
-        cdf['week_start'] = cdf['ts'].dt.to_period('W').apply(lambda r: r.start_time)
-
-        tr, tpr, tdl, am, tt = cdf['v_real'].sum(), cdf['profit'].sum(), len(cdf), 0, cdf['qty'].sum()
-        am = (tpr/tr*100) if tr>0 else 0
-
-        k1,k2,k3,k4,k5 = st.columns(5)
-        for col,lbl,val in [(k1,"Vendas",str(tdl)),(k2,"Faturamento",f"R$ {tr:,.0f}"),(k3,"Lucro",f"R$ {tpr:,.0f}"),(k4,"Margem",f"{am:.1f}%"),(k5,"Testes",f"{tt:,}")]:
-            col.markdown(f"<div class='kpi-card'><div class='kpi-label'>{lbl}</div><div class='kpi-value'>{val}</div></div>", unsafe_allow_html=True)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        view = st.radio("Período:", ["Semanal","Mensal","Anual"], horizontal=True)
-        gcol = {'Semanal': 'week_start', 'Mensal': 'month_name', 'Anual': 'year'}[view]
-        g = cdf.groupby(gcol).agg(Vendas=('v_real','sum'), Lucro=('profit','sum'), Projetos=('id','count'), Testes=('qty','sum')).reset_index()
-        g.columns = ['Período','Vendas (R$)','Lucro (R$)','Projetos','Testes']
-        if view == 'Semanal': g['Período'] = g['Período'].dt.strftime('%d/%m/%Y')
-        g['Margem (%)'] = (g['Lucro (R$)']/g['Vendas (R$)']*100).round(1)
-        st.dataframe(g.sort_values('Período', ascending=False), use_container_width=True, hide_index=True)
-        st.bar_chart(g.set_index('Período')[['Vendas (R$)','Lucro (R$)']])
-
-        st.markdown("---")
-        st.subheader("📥 Exportar")
-        disp = cdf[['ts','client_name','qty','cost_usd','v_real','profit','margin']].copy()
-        disp.columns = ['Data','Cliente','Qtd','Custo USD','Venda R$','Lucro R$','Margem (%)']
-        disp['Data'] = disp['Data'].dt.strftime('%d/%m/%Y')
-        e1, e2 = st.columns(2)
-        with e1:
-            buf = io.StringIO(); disp.to_csv(buf, index=False)
-            st.download_button("⬇️ CSV", buf.getvalue(), f"integrity_{date.today()}.csv", "text/csv")
-        with e2:
-            try:
-                buf = io.BytesIO()
-                with pd.ExcelWriter(buf, engine='openpyxl') as w:
-                    disp.to_excel(w, sheet_name='Todos', index=False)
-                    g.to_excel(w, sheet_name=view, index=False)
-                st.download_button("⬇️ Excel", buf.getvalue(), f"integrity_{date.today()}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-            except ImportError:
-                st.warning("pip install openpyxl")
-
-# ============================================================
-# TAB 4: ADMIN (only for admins)
-# ============================================================
-if is_admin() and len(tab_list) > 3:
-    with tab_list[3]:
-        st.header("⚙️ Painel Administrativo")
-
-        # --- Create new user ---
-        st.subheader("➕ Criar Novo Usuário")
-        if not sb_admin:
-            st.error("Service role key não configurada. Adicione SUPABASE_SERVICE_KEY nos secrets.")
-        else:
->>>>>>> 2b45e05 (Initial deploy)
             with st.form("create_user_form"):
                 nu_name = st.text_input("Nome completo")
                 nu_email = st.text_input("Email")
                 nu_pass = st.text_input("Senha temporária", type="password")
                 nu_role = st.selectbox("Papel", ["user", "admin"])
-<<<<<<< HEAD
                 send_email_check = st.checkbox("Enviar email de boas-vindas com credenciais", value=True)
                 submitted = st.form_submit_button("Criar Usuário")
-=======
-                submitted = st.form_submit_button("Criar Usuário")
-
->>>>>>> 2b45e05 (Initial deploy)
                 if submitted:
                     if nu_email and nu_pass and nu_name:
                         try:
@@ -1535,7 +1295,6 @@ if is_admin() and len(tab_list) > 3:
                                 "email_confirm": True,
                                 "user_metadata": {"full_name": nu_name, "role": nu_role}
                             })
-<<<<<<< HEAD
                             st.success(f"Usuário '{nu_name}' ({nu_email}) criado!")
 
                             # Send welcome email
@@ -1545,15 +1304,11 @@ if is_admin() and len(tab_list) > 3:
                                     st.success(f"Email de boas-vindas enviado para {nu_email}!")
                                 else:
                                     st.warning(f"Usuário criado, mas email não enviado: {email_err}")
-=======
-                            st.success(f"Usuário '{nu_name}' ({nu_email}) criado! Senha temporária: enviar ao funcionário.")
->>>>>>> 2b45e05 (Initial deploy)
                         except Exception as e:
                             st.error(f"Erro: {e}")
                     else:
                         st.warning("Preencha todos os campos.")
 
-<<<<<<< HEAD
         # --- User list with full management ---
         st.markdown("---")
         st.subheader("Usuários Cadastrados")
@@ -1684,20 +1439,6 @@ if is_admin() and len(tab_list) > 3:
                     elif is_self:
                         st.caption("(sua conta)")
 
-=======
-        # --- User list ---
-        st.markdown("---")
-        st.subheader("👥 Usuários Cadastrados")
-        try:
-            users = sb.table('user_profiles').select('*').order('created_at').execute()
-            if users.data:
-                udf = pd.DataFrame(users.data)
-                udf = udf[['full_name', 'email', 'role', 'is_active', 'created_at']]
-                udf.columns = ['Nome', 'Email', 'Papel', 'Ativo', 'Criado em']
-                udf['Criado em'] = pd.to_datetime(udf['Criado em']).dt.strftime('%d/%m/%Y')
-                udf['Ativo'] = udf['Ativo'].map({True: '✅', False: '❌'})
-                st.dataframe(udf, use_container_width=True, hide_index=True)
->>>>>>> 2b45e05 (Initial deploy)
             else:
                 st.info("Nenhum usuário cadastrado ainda.")
         except Exception as e:
@@ -1705,11 +1446,7 @@ if is_admin() and len(tab_list) > 3:
 
         # --- Activity log ---
         st.markdown("---")
-<<<<<<< HEAD
         st.subheader("Log de Atividades")
-=======
-        st.subheader("📜 Log de Atividades")
->>>>>>> 2b45e05 (Initial deploy)
         try:
             events = sb.table('deal_events').select('*, deals(clients(name))').order('created_at', desc=True).limit(50).execute()
             if events.data:
