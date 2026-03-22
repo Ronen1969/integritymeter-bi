@@ -67,24 +67,10 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color:
 .target-bar { height: 100%; border-radius: 10px; display: flex; align-items: center; padding: 0 8px; font-size: 11px; font-weight: 600; color: white; }
 .client-rank { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; margin: 4px 0; }
 .rank-num { font-size: 20px; font-weight: 700; color: #8DAE10; min-width: 30px; }
-/* Fix 1: Sidebar toggle button */
-.sidebar-toggle-btn button {
-    background-color: #f1f5f9 !important; color: #6B7280 !important;
-    border: 1px solid #e2e8f0 !important; min-height: 32px !important;
-    padding: 4px 12px !important; font-size: 18px !important;
-    border-radius: 8px !important;
+/* Pipeline action buttons — compact emoji style */
+.stColumn:has(> div > div > .stButton) .stButton > button {
+    min-height: 36px !important; padding: 4px 8px !important;
 }
-.sidebar-toggle-btn button:hover { background-color: #e2e8f0 !important; }
-/* Fix 2: Pipeline delete button */
-.pipe-del-btn button {
-    background-color: #FEF2F2 !important; color: #EF4444 !important;
-    border: 1px solid #FCA5A5 !important; min-height: 32px !important;
-    padding: 4px 8px !important; font-size: 12px !important;
-}
-.pipe-del-btn button:hover { background-color: #EF4444 !important; color: white !important; }
-/* Fix 6: Confirmation dialog styling */
-.confirm-delete { padding: 12px 16px; border-radius: 10px; background: #FEF2F2; border: 1px solid #FCA5A5; margin: 6px 0; }
-.confirm-delete-btns button { min-height: 32px !important; padding: 4px 16px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -336,28 +322,69 @@ def status_dot_text(key):
 # 5. FX RATE
 # ============================================================
 def get_live_fx():
+    """Fetch live USD/BRL rate with multiple fallback sources."""
+    rate = None
+    source = None
+
+    # Source 1: yfinance
     try:
         ticker = yf.Ticker("USDBRL=X")
         rate = float(ticker.fast_info['last_price'])
+        source = 'yfinance'
+    except:
+        pass
+
+    # Source 2: Free API fallback (exchangerate-api.com)
+    if rate is None:
         try:
-            sb.table('fx_snapshots').insert({'rate': rate, 'source': 'yfinance'}).execute()
+            import urllib.request
+            url = "https://open.er-api.com/v6/latest/USD"
+            req = urllib.request.Request(url, headers={'User-Agent': 'IntegrityMeter/1.0'})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode())
+                if data.get('result') == 'success' and 'BRL' in data.get('rates', {}):
+                    rate = float(data['rates']['BRL'])
+                    source = 'exchangerate-api'
+        except:
+            pass
+
+    # Source 3: Another free fallback (frankfurter.app - ECB data)
+    if rate is None:
+        try:
+            import urllib.request
+            url = "https://api.frankfurter.app/latest?from=USD&to=BRL"
+            req = urllib.request.Request(url, headers={'User-Agent': 'IntegrityMeter/1.0'})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode())
+                if 'rates' in data and 'BRL' in data['rates']:
+                    rate = float(data['rates']['BRL'])
+                    source = 'frankfurter'
+        except:
+            pass
+
+    # Save to DB if we got a rate
+    if rate is not None:
+        try:
+            sb.table('fx_snapshots').insert({'rate': rate, 'source': source}).execute()
         except:
             pass
         return rate
+
+    # Fallback: DB snapshot
+    try:
+        res = sb.table('fx_snapshots').select('rate').order('created_at', desc=True).limit(1).execute()
+        if res.data: return float(res.data[0]['rate'])
     except:
-        try:
-            res = sb.table('fx_snapshots').select('rate').order('created_at', desc=True).limit(1).execute()
-            if res.data: return float(res.data[0]['rate'])
-        except:
-            pass
-        return 5.30
+        pass
+    return 5.30
 
 def get_cached_fx():
+    """Return cached rate if fresh (<10 min), otherwise fetch live."""
     try:
         res = sb.table('fx_snapshots').select('rate,created_at').order('created_at', desc=True).limit(1).execute()
         if res.data:
             cached_time = datetime.fromisoformat(res.data[0]['created_at'].replace('Z', '+00:00'))
-            if (datetime.now(cached_time.tzinfo) - cached_time).total_seconds() < 900:
+            if (datetime.now(cached_time.tzinfo) - cached_time).total_seconds() < 600:
                 return float(res.data[0]['rate'])
     except:
         pass
@@ -436,30 +463,35 @@ except:
 # ============================================================
 # 8. SIDEBAR (Fix 1: collapsible via Streamlit native button)
 # ============================================================
-# Fix 1: Sidebar collapse/expand hint at top of main area
-# Streamlit has a built-in sidebar collapse (arrow button).
-# We add an explicit toggle button in the main content area for better discoverability.
-if 'sidebar_collapsed' not in st.session_state:
-    st.session_state.sidebar_collapsed = False
-
-col_toggle, col_spacer = st.columns([0.08, 0.92])
-with col_toggle:
-    st.markdown("<div class='sidebar-toggle-btn'>", unsafe_allow_html=True)
-    toggle_label = ">" if st.session_state.sidebar_collapsed else "<"
-    if st.button(toggle_label, key="sidebar_toggle", help="Ocultar/mostrar barra lateral para maximizar conteúdo"):
-        st.session_state.sidebar_collapsed = not st.session_state.sidebar_collapsed
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
-
-# Fix 1: Apply CSS to hide sidebar when collapsed
-if st.session_state.sidebar_collapsed:
-    st.markdown("""
-    <style>
-    [data-testid="stSidebar"] { display: none !important; }
-    [data-testid="stSidebarCollapsedControl"] { display: none !important; }
-    .main .block-container { max-width: 100% !important; padding-left: 2rem !important; }
-    </style>
-    """, unsafe_allow_html=True)
+# Fix 1 (v2): Pure CSS/JS sidebar toggle — instant, no rerun needed
+components.html("""
+<style>
+#im-sidebar-toggle {
+    position: fixed; top: 68px; left: 5px; z-index: 999999;
+    background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px;
+    width: 32px; height: 32px; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; font-size: 16px;
+    color: #6B7280; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+#im-sidebar-toggle:hover { background: #e2e8f0; color: #374151; }
+</style>
+<div id="im-sidebar-toggle" title="Ocultar/mostrar barra lateral">◀</div>
+<script>
+(function() {
+    const btn = document.getElementById('im-sidebar-toggle');
+    const doc = window.parent.document;
+    let hidden = false;
+    btn.addEventListener('click', function() {
+        hidden = !hidden;
+        const sidebar = doc.querySelector('[data-testid="stSidebar"]');
+        const control = doc.querySelector('[data-testid="stSidebarCollapsedControl"]');
+        if (sidebar) sidebar.style.display = hidden ? 'none' : '';
+        if (control) control.style.display = hidden ? 'none' : '';
+        btn.textContent = hidden ? '▶' : '◀';
+    });
+})();
+</script>
+""", height=0)
 
 with st.sidebar:
     logo_path = os.path.expanduser("~/Desktop/integrity-meter-logo.png")
@@ -894,8 +926,20 @@ with tab_list[2]:
             st.markdown("<br>", unsafe_allow_html=True)
             st.subheader("Todos os Negócios")
 
-            # Fix 2: Pipeline with delete buttons per deal
-            pipe_deals = [d for d in all_deals if d['id'] in df['id'].values]
+            # Pipeline deal cards with aligned Edit/Delete buttons
+            pipe_ids = set(df['id'].tolist())
+            pipe_deals = [d for d in all_deals if d['id'] in pipe_ids]
+
+            # Header row
+            hc1, hc2, hc3, hc4, hc5, hc6 = st.columns([2.5, 1.5, 1.5, 1.2, 0.8, 0.8])
+            hc1.markdown("**Cliente**")
+            hc2.markdown("**Venda**")
+            hc3.markdown("**Lucro**")
+            hc4.markdown("**Data**")
+            hc5.markdown("**Editar**")
+            hc6.markdown("**Excluir**")
+            st.markdown("<hr style='margin:4px 0;border-color:#e2e8f0;'>", unsafe_allow_html=True)
+
             for pd_deal in pipe_deals:
                 pd_cn = (pd_deal.get('clients', {}) or {}).get('name', '?')
                 pd_sk = pd_deal['status']
@@ -903,55 +947,42 @@ with tab_list[2]:
                 pd_pr = float(pd_deal['profit'])
                 pd_mg = float(pd_deal['margin'])
                 pd_dt = pd_deal['created_at'][:10] if pd_deal.get('created_at') else ''
-                pd_by = pd_deal.get('created_by_email', '')
 
-                pc1, pc2, pc3, pc4, pc5, pc6, pc7 = st.columns([0.8, 2.2, 1.0, 1.3, 1.3, 0.8, 0.6])
-                pc1.markdown(f"<small>{status_dot(pd_sk)} {status_key_to_label(pd_sk)}</small>", unsafe_allow_html=True)
-                pc2.markdown(f"**{pd_cn}**")
-                pc3.markdown(f"<small>R$ {pd_vr:,.0f}</small>", unsafe_allow_html=True)
-                pc4.markdown(f"<small>R$ {pd_pr:,.0f} ({pd_mg:.0f}%)</small>", unsafe_allow_html=True)
-                pc5.markdown(f"<small>{pd_dt}</small>", unsafe_allow_html=True)
-                with pc6:
-                    if st.button("Editar", key=f"pipe_edit_{pd_deal['id']}", help=f"Editar {pd_cn}"):
+                rc1, rc2, rc3, rc4, rc5, rc6 = st.columns([2.5, 1.5, 1.5, 1.2, 0.8, 0.8])
+                rc1.markdown(f"{status_dot(pd_sk)} **{pd_cn}**<br><small style='color:#9CA3AF;'>{status_key_to_label(pd_sk)}</small>", unsafe_allow_html=True)
+                rc2.markdown(f"R$ {pd_vr:,.0f}")
+                rc3.markdown(f"R$ {pd_pr:,.0f} <small>({pd_mg:.0f}%)</small>", unsafe_allow_html=True)
+                rc4.markdown(f"{pd_dt}")
+                with rc5:
+                    if st.button("✏️", key=f"pe_{pd_deal['id']}", help=f"Editar {pd_cn} na aba Novo Negócio", use_container_width=True):
                         load_deal_to_form(pd_deal)
+                        st.toast(f"'{pd_cn}' carregado na aba Novo Negócio — clique na aba para editar.")
                         st.rerun()
-                with pc7:
-                    st.markdown("<div class='pipe-del-btn'>", unsafe_allow_html=True)
-                    # Fix 6: Two-step delete confirmation
-                    confirm_key = f"pipe_confirm_del_{pd_deal['id']}"
-                    if st.session_state.get(confirm_key, False):
-                        pass  # Handled below
-                    elif st.button("X", key=f"pipe_del_{pd_deal['id']}", help=f"Excluir {pd_cn}"):
-                        st.session_state[confirm_key] = True
-                        st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
-
-                # Show confirmation dialog if pending
-                confirm_key = f"pipe_confirm_del_{pd_deal['id']}"
-                if st.session_state.get(confirm_key, False):
-                    st.markdown(f"<div class='confirm-delete'>Tem certeza que deseja excluir <strong>{pd_cn}</strong>?</div>", unsafe_allow_html=True)
-                    cc1, cc2, cc3 = st.columns([1, 1, 4])
-                    with cc1:
-                        if st.button("Sim, excluir", key=f"pipe_yes_{pd_deal['id']}"):
-                            try:
-                                sb.table('deal_events').delete().eq('deal_id', pd_deal['id']).execute()
-                                sb.table('deals').delete().eq('id', pd_deal['id']).execute()
-                                if st.session_state.selected_deal_id == pd_deal['id']:
-                                    clear_form()
-                                st.toast(f"Negócio '{pd_cn}' excluído!")
-                                st.session_state[confirm_key] = False
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Erro ao excluir: {e}")
-                    with cc2:
-                        if st.button("Cancelar", key=f"pipe_no_{pd_deal['id']}"):
-                            st.session_state[confirm_key] = False
+                with rc6:
+                    confirm_key = f"pcd_{pd_deal['id']}"
+                    if not st.session_state.get(confirm_key, False):
+                        if st.button("🗑️", key=f"pd_{pd_deal['id']}", help=f"Excluir {pd_cn}", use_container_width=True):
+                            st.session_state[confirm_key] = True
                             st.rerun()
 
-            # Also show as table for sorting/filtering
-            with st.expander("Ver como Tabela", expanded=False):
-                td = [{'Status': f"{status_dot_text(d['status'])} {status_key_to_label(d['status'])}", 'Cliente': (d.get('clients',{}) or {}).get('name','?'), 'Qtd': d['qty'], 'Venda R$': f"R$ {float(d['v_real']):,.2f}", 'Lucro R$': f"R$ {float(d['profit']):,.2f}", 'Margem': f"{float(d['margin']):.1f}%", 'Criado por': d.get('created_by_email',''), 'Data': d['created_at'][:10] if d.get('created_at') else ''} for d in pipe_deals]
-                st.dataframe(pd.DataFrame(td), use_container_width=True, hide_index=True)
+                # Delete confirmation inline
+                if st.session_state.get(f"pcd_{pd_deal['id']}", False):
+                    st.warning(f"Excluir **{pd_cn}**? Esta ação não pode ser desfeita.")
+                    cc1, cc2, cc3 = st.columns([1, 1, 4])
+                    if cc1.button("Sim, excluir", key=f"py_{pd_deal['id']}", type="primary"):
+                        try:
+                            sb.table('deal_events').delete().eq('deal_id', pd_deal['id']).execute()
+                            sb.table('deals').delete().eq('id', pd_deal['id']).execute()
+                            if st.session_state.selected_deal_id == pd_deal['id']:
+                                clear_form()
+                            st.toast(f"'{pd_cn}' excluído!")
+                            st.session_state[f"pcd_{pd_deal['id']}"] = False
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erro: {e}")
+                    if cc2.button("Cancelar", key=f"pn_{pd_deal['id']}"):
+                        st.session_state[f"pcd_{pd_deal['id']}"] = False
+                        st.rerun()
 
 # ============================================================
 # TAB 3: REPORTS
