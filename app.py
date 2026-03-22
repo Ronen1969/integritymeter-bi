@@ -41,7 +41,7 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #FFFFFF; }
-[data-testid="stSidebar"] { background-color: #FFFFFF; border-right: 1px solid #F3F4F6; width: 400px !important; transition: margin-left 0.3s ease, opacity 0.3s ease; }
+[data-testid="stSidebar"] { background-color: #FFFFFF; border-right: 1px solid #F3F4F6; width: 280px !important; min-width: 280px !important; transition: margin-left 0.3s ease, opacity 0.3s ease; }
 .stButton>button {
     background-color: #8DAE10 !important; color: white !important;
     border-radius: 10px !important; min-height: 45px; height: auto;
@@ -50,8 +50,7 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color:
     line-height: 1.4 !important;
 }
 .main-card { padding: 30px; border-radius: 16px; background-color: #FFFFFF; border: 1px solid #F3F4F6; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.02); }
-.sidebar-deal-btn button { font-size: 13px !important; min-height: 36px !important; padding: 6px 12px !important; text-align: left !important; }
-.sidebar-del-btn button { background-color: #EF4444 !important; min-height: 36px !important; max-height: 36px !important; padding: 4px 10px !important; font-size: 14px !important; }
+/* sidebar deal buttons removed — deals now managed in Pipeline tab */
 .loaded-banner { padding: 10px 16px; border-radius: 8px; background-color: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; font-weight: 500; margin-bottom: 8px; }
 .kpi-card { padding: 16px; border-radius: 12px; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; text-align: center; }
 .kpi-value { font-size: 28px; font-weight: 700; color: #8DAE10; margin: 4px 0; }
@@ -376,6 +375,7 @@ FORM_DEFAULTS = {
     'form_client': '',
     'form_qty': 0,
     'form_cost': 0.0,
+    'form_unit_price': 0.0,
     'form_vreal': 0.0,
     'form_status_idx': 0,
     'form_notes': '',
@@ -405,7 +405,10 @@ if '_pending_load' in st.session_state and st.session_state['_pending_load'] is 
     st.session_state.form_client = _cn
     st.session_state.form_qty = int(_deal['qty'])
     st.session_state.form_cost = float(_deal['cost_usd'])
-    st.session_state.form_vreal = float(_deal['v_real'])
+    _qty = int(_deal['qty'])
+    _vr = float(_deal['v_real'])
+    st.session_state.form_unit_price = round(_vr / _qty, 2) if _qty > 0 else _vr
+    st.session_state.form_vreal = _vr
     st.session_state.form_status_idx = STATUS_KEYS.index(_deal['status']) if _deal['status'] in STATUS_KEYS else 0
     st.session_state.form_notes = (_deal.get('clients', {}) or {}).get('notes', '') or ''
     st.session_state.selected_deal_id = _deal['id']
@@ -509,47 +512,8 @@ with st.sidebar:
     st.caption(f"Total impostos: **{total_tax_pct:.2f}%**")
 
     st.markdown("---")
-    st.caption("MEUS NEGÓCIOS")
-    if st.button("+ Novo Negócio", key="new_deal_btn", use_container_width=True, help="Limpa o formulário e abre a aba Novo Negócio"):
-        clear_form()
-        st.rerun()  # Form will be cleared on next cycle
-
-    # Search filter for deals
-    search_sidebar = st.text_input("Buscar cliente...", key="sidebar_search", placeholder="Nome do cliente")
-
-    filtered_deals = all_deals
-    if search_sidebar:
-        filtered_deals = [d for d in all_deals if search_sidebar.lower() in ((d.get('clients',{}) or {}).get('name','') or '').lower()]
-
-    if not filtered_deals:
-        st.info("Nenhum negócio encontrado." if search_sidebar else "Nenhum negócio salvo.")
-    else:
-        for deal in filtered_deals:
-            cn = deal.get('clients', {}).get('name', '?') if deal.get('clients') else '?'
-            sk = deal['status']
-            dd = deal['created_at'][:10] if deal.get('created_at') else ''
-
-            col_load, col_del = st.columns([4, 1])
-            with col_load:
-                st.markdown("<div class='sidebar-deal-btn'>", unsafe_allow_html=True)
-                if st.button(f"{status_dot_text(sk)} {cn} | {dd}", key=f"btn_{deal['id']}"):
-                    load_deal_to_form(deal)
-                    st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
-
-            with col_del:
-                st.markdown("<div class='sidebar-del-btn'>", unsafe_allow_html=True)
-                if st.button("X", key=f"del_{deal['id']}", help=f"Excluir {cn}"):
-                    try:
-                        sb.table('deal_events').delete().eq('deal_id', deal['id']).execute()
-                        sb.table('deals').delete().eq('id', deal['id']).execute()
-                        if st.session_state.selected_deal_id == deal['id']:
-                            clear_form()
-                        st.toast(f"Negócio '{cn}' excluído!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao excluir: {e}")
-                st.markdown("</div>", unsafe_allow_html=True)
+    st.caption(f"Negócios: **{len(all_deals)}** cadastrados")
+    st.caption("Gerencie seus negócios na aba Pipeline.")
 
 # ============================================================
 # 9. MAIN TABS
@@ -729,8 +693,17 @@ with tab_list[1]:
         status_deal = i2.selectbox("Status", STATUS_LABELS, index=st.session_state.form_status_idx, help="Fase atual do negócio no pipeline de vendas")
         i3, i4 = st.columns(2)
         qty = i3.number_input("Qtd Testes", key="form_qty", min_value=0, step=1, help="Quantidade de testes/avaliações a serem aplicados neste negócio")
-        cost = i4.number_input("Custo Unitário (USD)", key="form_cost", min_value=0.0, step=1.0, format="%.2f", help="Custo GA por teste pago ao fornecedor em dólares americanos — clique no campo e digite o valor")
-        v_real = st.number_input("Valor de Venda (R$)", key="form_vreal", min_value=0.0, step=100.0, format="%.2f", help="Valor total cobrado do cliente em reais brasileiros — clique no campo e digite o valor")
+        cost = i4.number_input("Custo Unitário (USD)", key="form_cost", min_value=0.0, step=1.0, format="%.2f", help="Custo GA por teste pago ao fornecedor em dólares americanos")
+        i5, i6 = st.columns(2)
+        unit_price = i5.number_input("Preço Unitário ao Cliente (R$)", key="form_unit_price", min_value=0.0, step=5.0, format="%.2f", help="Preço por teste cobrado do cliente em reais")
+        # Auto-calculate total: unit price × qty
+        auto_total = round(unit_price * qty, 2) if (unit_price > 0 and qty > 0) else 0.0
+        if auto_total > 0 and st.session_state.form_vreal == 0.0:
+            st.session_state.form_vreal = auto_total
+        v_real = i6.number_input("Valor Total de Venda (R$)", key="form_vreal", min_value=0.0, step=100.0, format="%.2f", help="Valor total = Preço Unitário × Qtd (editável)")
+        # Show auto-calc hint
+        if unit_price > 0 and qty > 0:
+            st.caption(f"Cálculo: R$ {unit_price:,.2f} × {qty} = **R$ {auto_total:,.2f}**" + (" ✓" if abs(v_real - auto_total) < 0.01 else f" (editado para R$ {v_real:,.2f})"))
         notes = st.text_area("Notas", key="form_notes", height=68, help="Observações internas sobre o negócio (não visível ao cliente)")
 
     total_tax = total_tax_pct / 100
@@ -888,17 +861,21 @@ with tab_list[2]:
                 pd_vr = float(pd_deal['v_real'])
                 pd_pr = float(pd_deal['profit'])
                 pd_mg = float(pd_deal['margin'])
+                pd_qt = int(pd_deal['qty'])
+                pd_up = round(pd_vr / pd_qt, 2) if pd_qt > 0 else pd_vr
                 pd_dt = pd_deal['created_at'][:10] if pd_deal.get('created_at') else ''
                 deal_id = pd_deal['id']
                 mg_color = "#059669" if pd_mg >= 30 else "#D97706" if pd_mg >= 10 else "#DC2626"
 
-                # Deal card as a single styled row
-                st.markdown(f"""<div style='display:flex;align-items:center;padding:10px 16px;border-radius:10px;border:1px solid #e2e8f0;margin:4px 0;background:#fafafa;gap:16px;'>
+                # Deal card with unit price, total, profit, date
+                st.markdown(f"""<div style='display:flex;align-items:center;padding:10px 16px;border-radius:10px;border:1px solid #e2e8f0;margin:4px 0;background:#fafafa;gap:12px;'>
                     <div style='flex:0 0 10px;'>{status_dot(pd_sk)}</div>
                     <div style='flex:2;'><strong>{pd_cn}</strong><br><small style='color:#9CA3AF;'>{status_key_to_label(pd_sk)}</small></div>
-                    <div style='flex:1;text-align:right;'><div style='font-weight:600;'>R$ {pd_vr:,.0f}</div><small style='color:#9CA3AF;'>Venda</small></div>
+                    <div style='flex:0.6;text-align:center;'><div style='font-weight:600;font-size:13px;'>{pd_qt}</div><small style='color:#9CA3AF;'>Testes</small></div>
+                    <div style='flex:1;text-align:right;'><div style='font-weight:600;font-size:13px;'>R$ {pd_up:,.2f}</div><small style='color:#9CA3AF;'>Preço Unit.</small></div>
+                    <div style='flex:1;text-align:right;'><div style='font-weight:600;'>R$ {pd_vr:,.0f}</div><small style='color:#9CA3AF;'>Total</small></div>
                     <div style='flex:1;text-align:right;'><div style='font-weight:600;color:{mg_color};'>R$ {pd_pr:,.0f}</div><small style='color:#9CA3AF;'>Lucro ({pd_mg:.0f}%)</small></div>
-                    <div style='flex:0.8;text-align:right;color:#9CA3AF;font-size:13px;'>{pd_dt}</div>
+                    <div style='flex:0.7;text-align:right;color:#9CA3AF;font-size:12px;'>{pd_dt}</div>
                 </div>""", unsafe_allow_html=True)
 
                 # Action buttons below the card
@@ -929,12 +906,15 @@ with tab_list[2]:
                     st.markdown(f"<div style='padding:4px 0 8px 0;border-left:3px solid #8DAE10;padding-left:16px;margin:4px 0;'>", unsafe_allow_html=True)
                     st.markdown(f"**Editando: {pd_cn}**")
                     with st.form(f"edit_form_{deal_id}"):
-                        ef1, ef2 = st.columns(2)
+                        ef1, ef2, ef3 = st.columns(3)
                         edit_qty = ef1.number_input("Qtd Testes", value=int(pd_deal['qty']), min_value=0, step=1, key=f"eq_{deal_id}")
                         edit_cost = ef2.number_input("Custo USD", value=float(pd_deal['cost_usd']), min_value=0.0, step=1.0, format="%.2f", key=f"ec_{deal_id}")
-                        ef3, ef4 = st.columns(2)
-                        edit_vreal = ef3.number_input("Venda R$", value=float(pd_deal['v_real']), min_value=0.0, step=100.0, format="%.2f", key=f"ev_{deal_id}")
-                        edit_status = ef4.selectbox("Status", STATUS_LABELS, index=STATUS_KEYS.index(pd_sk) if pd_sk in STATUS_KEYS else 0, key=f"es_{deal_id}")
+                        edit_unit = ef3.number_input("Preço Unit. R$", value=pd_up, min_value=0.0, step=5.0, format="%.2f", key=f"eu_{deal_id}")
+                        ef4, ef5 = st.columns(2)
+                        # Auto-calc total from unit price × qty
+                        auto_edit_total = round(edit_unit * edit_qty, 2) if (edit_unit > 0 and edit_qty > 0) else float(pd_deal['v_real'])
+                        edit_vreal = ef4.number_input("Venda Total R$", value=auto_edit_total, min_value=0.0, step=100.0, format="%.2f", key=f"ev_{deal_id}")
+                        edit_status = ef5.selectbox("Status", STATUS_LABELS, index=STATUS_KEYS.index(pd_sk) if pd_sk in STATUS_KEYS else 0, key=f"es_{deal_id}")
 
                         sf1, sf2 = st.columns(2)
                         if sf1.form_submit_button("Salvar", use_container_width=True):
