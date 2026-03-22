@@ -10,7 +10,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
-import streamlit.components.v1 as components
+# streamlit.components.v1 removed — was creating invisible iframes that blocked button clicks
 
 # ============================================================
 # 1. CONFIG & SUPABASE
@@ -74,8 +74,7 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color:
 </style>
 """, unsafe_allow_html=True)
 
-# Fix 5: JavaScript to auto-select number input content on focus
-# This prevents the "0.005 instead of 5" problem
+# Fix 5: JavaScript to auto-select number input content on focus (no iframe)
 st.markdown("""
 <script>
 document.addEventListener('focusin', function(e) {
@@ -85,44 +84,6 @@ document.addEventListener('focusin', function(e) {
 });
 </script>
 """, unsafe_allow_html=True)
-
-# Alternative JS injection via components for broader browser support
-components.html("""
-<script>
-// Fix 5: Auto-select number inputs on focus so typing replaces the value
-const doc = window.parent.document;
-doc.addEventListener('focusin', function(e) {
-    if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'number') {
-        setTimeout(function() { e.target.select(); }, 50);
-    }
-});
-
-// Fix 4: Session persistence - save/restore auth tokens in localStorage
-function saveSession(accessToken, refreshToken, userId) {
-    if (accessToken) {
-        localStorage.setItem('im_access_token', accessToken);
-        localStorage.setItem('im_refresh_token', refreshToken || '');
-        localStorage.setItem('im_user_id', userId || '');
-    }
-}
-function clearSession() {
-    localStorage.removeItem('im_access_token');
-    localStorage.removeItem('im_refresh_token');
-    localStorage.removeItem('im_user_id');
-}
-function getSession() {
-    return {
-        access_token: localStorage.getItem('im_access_token'),
-        refresh_token: localStorage.getItem('im_refresh_token'),
-        user_id: localStorage.getItem('im_user_id')
-    };
-}
-// Expose functions globally
-window.imSaveSession = saveSession;
-window.imClearSession = clearSession;
-window.imGetSession = getSession;
-</script>
-""", height=0)
 
 # ============================================================
 # 3. AUTHENTICATION
@@ -463,35 +424,26 @@ except:
 # ============================================================
 # 8. SIDEBAR (Fix 1: collapsible via Streamlit native button)
 # ============================================================
-# Fix 1 (v2): Pure CSS/JS sidebar toggle — instant, no rerun needed
-components.html("""
-<style>
-#im-sidebar-toggle {
-    position: fixed; top: 68px; left: 5px; z-index: 999999;
-    background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px;
-    width: 32px; height: 32px; cursor: pointer; display: flex;
-    align-items: center; justify-content: center; font-size: 16px;
-    color: #6B7280; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-#im-sidebar-toggle:hover { background: #e2e8f0; color: #374151; }
-</style>
-<div id="im-sidebar-toggle" title="Ocultar/mostrar barra lateral">◀</div>
-<script>
-(function() {
-    const btn = document.getElementById('im-sidebar-toggle');
-    const doc = window.parent.document;
-    let hidden = false;
-    btn.addEventListener('click', function() {
-        hidden = !hidden;
-        const sidebar = doc.querySelector('[data-testid="stSidebar"]');
-        const control = doc.querySelector('[data-testid="stSidebarCollapsedControl"]');
-        if (sidebar) sidebar.style.display = hidden ? 'none' : '';
-        if (control) control.style.display = hidden ? 'none' : '';
-        btn.textContent = hidden ? '▶' : '◀';
-    });
-})();
-</script>
-""", height=0)
+# Fix 1 (v3): Sidebar toggle via st.markdown — no iframe, no click blocking
+st.markdown("""
+<div id="im-sidebar-toggle" onclick="(function(){
+    var sb = document.querySelector('[data-testid=\\'stSidebar\\']');
+    var ctrl = document.querySelector('[data-testid=\\'stSidebarCollapsedControl\\']');
+    var btn = document.getElementById('im-sidebar-toggle');
+    if (sb && sb.style.display !== 'none') {
+        sb.style.display = 'none';
+        if(ctrl) ctrl.style.display = 'none';
+        btn.textContent = '▶';
+    } else if (sb) {
+        sb.style.display = '';
+        if(ctrl) ctrl.style.display = '';
+        btn.textContent = '◀';
+    }
+})()" style="position:fixed;top:68px;left:5px;z-index:999999;background:#f1f5f9;
+border:1px solid #e2e8f0;border-radius:8px;width:32px;height:32px;cursor:pointer;
+display:flex;align-items:center;justify-content:center;font-size:16px;color:#6B7280;
+box-shadow:0 1px 3px rgba(0,0,0,0.1);user-select:none;" title="Ocultar/mostrar barra lateral">◀</div>
+""", unsafe_allow_html=True)
 
 with st.sidebar:
     logo_path = os.path.expanduser("~/Desktop/integrity-meter-logo.png")
@@ -926,19 +878,9 @@ with tab_list[2]:
             st.markdown("<br>", unsafe_allow_html=True)
             st.subheader("Todos os Negócios")
 
-            # Pipeline deal cards with aligned Edit/Delete buttons
+            # Pipeline deal list with inline edit/delete
             pipe_ids = set(df['id'].tolist())
             pipe_deals = [d for d in all_deals if d['id'] in pipe_ids]
-
-            # Header row
-            hc1, hc2, hc3, hc4, hc5, hc6 = st.columns([2.5, 1.5, 1.5, 1.2, 0.8, 0.8])
-            hc1.markdown("**Cliente**")
-            hc2.markdown("**Venda**")
-            hc3.markdown("**Lucro**")
-            hc4.markdown("**Data**")
-            hc5.markdown("**Editar**")
-            hc6.markdown("**Excluir**")
-            st.markdown("<hr style='margin:4px 0;border-color:#e2e8f0;'>", unsafe_allow_html=True)
 
             for pd_deal in pipe_deals:
                 pd_cn = (pd_deal.get('clients', {}) or {}).get('name', '?')
@@ -947,41 +889,103 @@ with tab_list[2]:
                 pd_pr = float(pd_deal['profit'])
                 pd_mg = float(pd_deal['margin'])
                 pd_dt = pd_deal['created_at'][:10] if pd_deal.get('created_at') else ''
+                deal_id = pd_deal['id']
+                mg_color = "#059669" if pd_mg >= 30 else "#D97706" if pd_mg >= 10 else "#DC2626"
 
-                rc1, rc2, rc3, rc4, rc5, rc6 = st.columns([2.5, 1.5, 1.5, 1.2, 0.8, 0.8])
-                rc1.markdown(f"{status_dot(pd_sk)} **{pd_cn}**<br><small style='color:#9CA3AF;'>{status_key_to_label(pd_sk)}</small>", unsafe_allow_html=True)
-                rc2.markdown(f"R$ {pd_vr:,.0f}")
-                rc3.markdown(f"R$ {pd_pr:,.0f} <small>({pd_mg:.0f}%)</small>", unsafe_allow_html=True)
-                rc4.markdown(f"{pd_dt}")
-                with rc5:
-                    if st.button("✏️", key=f"pe_{pd_deal['id']}", help=f"Editar {pd_cn} na aba Novo Negócio", use_container_width=True):
-                        load_deal_to_form(pd_deal)
-                        st.toast(f"'{pd_cn}' carregado na aba Novo Negócio — clique na aba para editar.")
+                # Deal card as a single styled row
+                st.markdown(f"""<div style='display:flex;align-items:center;padding:10px 16px;border-radius:10px;border:1px solid #e2e8f0;margin:4px 0;background:#fafafa;gap:16px;'>
+                    <div style='flex:0 0 10px;'>{status_dot(pd_sk)}</div>
+                    <div style='flex:2;'><strong>{pd_cn}</strong><br><small style='color:#9CA3AF;'>{status_key_to_label(pd_sk)}</small></div>
+                    <div style='flex:1;text-align:right;'><div style='font-weight:600;'>R$ {pd_vr:,.0f}</div><small style='color:#9CA3AF;'>Venda</small></div>
+                    <div style='flex:1;text-align:right;'><div style='font-weight:600;color:{mg_color};'>R$ {pd_pr:,.0f}</div><small style='color:#9CA3AF;'>Lucro ({pd_mg:.0f}%)</small></div>
+                    <div style='flex:0.8;text-align:right;color:#9CA3AF;font-size:13px;'>{pd_dt}</div>
+                </div>""", unsafe_allow_html=True)
+
+                # Action buttons below the card
+                ac1, ac2, ac3 = st.columns([1, 1, 6])
+                edit_key = f"pipe_editing_{deal_id}"
+                del_key = f"pipe_deleting_{deal_id}"
+
+                with ac1:
+                    if st.button("Editar", key=f"pe_{deal_id}", use_container_width=True):
+                        # Toggle inline edit form
+                        current = st.session_state.get(edit_key, False)
+                        st.session_state[edit_key] = not current
+                        # Close any other open edit/delete forms
+                        for d in pipe_deals:
+                            if d['id'] != deal_id:
+                                st.session_state.pop(f"pipe_editing_{d['id']}", None)
+                        st.session_state.pop(del_key, None)
                         st.rerun()
-                with rc6:
-                    confirm_key = f"pcd_{pd_deal['id']}"
-                    if not st.session_state.get(confirm_key, False):
-                        if st.button("🗑️", key=f"pd_{pd_deal['id']}", help=f"Excluir {pd_cn}", use_container_width=True):
-                            st.session_state[confirm_key] = True
-                            st.rerun()
+                with ac2:
+                    if st.button("Excluir", key=f"pd_{deal_id}", use_container_width=True):
+                        current = st.session_state.get(del_key, False)
+                        st.session_state[del_key] = not current
+                        st.session_state.pop(edit_key, None)
+                        st.rerun()
 
-                # Delete confirmation inline
-                if st.session_state.get(f"pcd_{pd_deal['id']}", False):
+                # INLINE EDIT FORM (shown when Editar clicked)
+                if st.session_state.get(edit_key, False):
+                    st.markdown(f"<div style='padding:4px 0 8px 0;border-left:3px solid #8DAE10;padding-left:16px;margin:4px 0;'>", unsafe_allow_html=True)
+                    st.markdown(f"**Editando: {pd_cn}**")
+                    with st.form(f"edit_form_{deal_id}"):
+                        ef1, ef2 = st.columns(2)
+                        edit_qty = ef1.number_input("Qtd Testes", value=int(pd_deal['qty']), min_value=0, step=1, key=f"eq_{deal_id}")
+                        edit_cost = ef2.number_input("Custo USD", value=float(pd_deal['cost_usd']), min_value=0.0, step=1.0, format="%.2f", key=f"ec_{deal_id}")
+                        ef3, ef4 = st.columns(2)
+                        edit_vreal = ef3.number_input("Venda R$", value=float(pd_deal['v_real']), min_value=0.0, step=100.0, format="%.2f", key=f"ev_{deal_id}")
+                        edit_status = ef4.selectbox("Status", STATUS_LABELS, index=STATUS_KEYS.index(pd_sk) if pd_sk in STATUS_KEYS else 0, key=f"es_{deal_id}")
+
+                        sf1, sf2 = st.columns(2)
+                        if sf1.form_submit_button("Salvar", use_container_width=True):
+                            try:
+                                edit_status_key = status_label_to_key(edit_status)
+                                fx = st.session_state.dolar_live
+                                new_cost_brl = edit_qty * edit_cost * fx
+                                new_impostos = edit_vreal * total_tax_pct / 100
+                                new_profit = edit_vreal - new_cost_brl - new_impostos
+                                new_margin = (new_profit / edit_vreal * 100) if edit_vreal > 0 else 0
+
+                                update_data = {
+                                    'qty': edit_qty, 'cost_usd': float(edit_cost),
+                                    'v_real': float(edit_vreal), 'fx_rate': fx,
+                                    'tax_presumido': tax_p, 'tax_adm': adm_p,
+                                    'profit': round(new_profit, 2), 'margin': round(new_margin, 1),
+                                    'status': edit_status_key,
+                                    'closed_at': datetime.now().isoformat() if edit_status_key == 'concluido' else None,
+                                }
+                                # Track status change
+                                if pd_sk != edit_status_key:
+                                    sb.table('deal_events').insert({'deal_id': deal_id, 'event_type': 'status_change', 'old_value': pd_sk, 'new_value': edit_status_key}).execute()
+
+                                sb.table('deals').update(update_data).eq('id', deal_id).execute()
+                                st.session_state[edit_key] = False
+                                st.toast(f"'{pd_cn}' atualizado!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro: {e}")
+                        if sf2.form_submit_button("Cancelar", use_container_width=True):
+                            st.session_state[edit_key] = False
+                            st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+                # DELETE CONFIRMATION (shown when Excluir clicked)
+                if st.session_state.get(del_key, False):
                     st.warning(f"Excluir **{pd_cn}**? Esta ação não pode ser desfeita.")
-                    cc1, cc2, cc3 = st.columns([1, 1, 4])
-                    if cc1.button("Sim, excluir", key=f"py_{pd_deal['id']}", type="primary"):
+                    dc1, dc2, dc3 = st.columns([1, 1, 4])
+                    if dc1.button("Sim, excluir", key=f"py_{deal_id}"):
                         try:
-                            sb.table('deal_events').delete().eq('deal_id', pd_deal['id']).execute()
-                            sb.table('deals').delete().eq('id', pd_deal['id']).execute()
-                            if st.session_state.selected_deal_id == pd_deal['id']:
+                            sb.table('deal_events').delete().eq('deal_id', deal_id).execute()
+                            sb.table('deals').delete().eq('id', deal_id).execute()
+                            if st.session_state.selected_deal_id == deal_id:
                                 clear_form()
                             st.toast(f"'{pd_cn}' excluído!")
-                            st.session_state[f"pcd_{pd_deal['id']}"] = False
+                            st.session_state[del_key] = False
                             st.rerun()
                         except Exception as e:
                             st.error(f"Erro: {e}")
-                    if cc2.button("Cancelar", key=f"pn_{pd_deal['id']}"):
-                        st.session_state[f"pcd_{pd_deal['id']}"] = False
+                    if dc2.button("Cancelar", key=f"pn_{deal_id}"):
+                        st.session_state[del_key] = False
                         st.rerun()
 
 # ============================================================
