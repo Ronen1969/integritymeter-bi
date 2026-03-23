@@ -149,16 +149,26 @@ def render_admin() -> None:
                     except Exception as e:
                         st.error(f"Erro: {e}")
 
-            # Delete user
+            # Delete user (requires confirmation)
             with col_e:
                 if st.button("Excluir", key=f"delusr_{u_id}", use_container_width=True):
+                    st.session_state[f'confirm_del_{u_id}'] = True
+
+            if st.session_state.get(f'confirm_del_{u_id}', False):
+                st.warning(f"⚠️ Excluir **{u_name}** ({u_email})? Esta ação é **irreversível** e removerá o acesso permanentemente.")
+                dc1, dc2, _ = st.columns([1, 1, 4])
+                if dc1.button("Sim, excluir", key=f"confirm_yes_{u_id}"):
                     try:
                         sb_admin.auth.admin.delete_user(u_id)
                         sb.table('user_profiles').delete().eq('id', u_id).execute()
+                        st.session_state.pop(f'confirm_del_{u_id}', None)
                         st.toast(f"'{u_name}' excluído.")
                         st.rerun()
                     except Exception as e:
                         st.error(f"Erro: {e}")
+                if dc2.button("Cancelar", key=f"confirm_no_{u_id}"):
+                    st.session_state.pop(f'confirm_del_{u_id}', None)
+                    st.rerun()
 
             # Reset password form
             if st.session_state.get(f'show_reset_{u_id}', False):
