@@ -1,4 +1,4 @@
-""" tabs/pipeline.py — Tab 2: Pipeline de Vendas. """
+""" tabs/pipeline.py â Tab 2: Pipeline de Vendas. """
 from datetime import datetime, date, timedelta
 
 import pandas as pd
@@ -26,10 +26,10 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
     st.header("Pipeline de Vendas")
 
     if not all_deals:
-        st.info("Nenhum negócio cadastrado.")
+        st.info("Nenhum negÃ³cio cadastrado.")
         return
 
-    # ── Filters ────────────────────────────────────────────────────────────────
+    # ââ Filters ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     fc1, fc2, fc3 = st.columns(3)
     filter_status = fc1.multiselect(
         "Filtrar por Status",
@@ -59,7 +59,7 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
         df = df[df['created_at_dt'] >= pd.Timestamp(filter_date, tz='UTC')]
 
     if df.empty:
-        st.warning("Nenhum negócio encontrado com os filtros aplicados.")
+        st.warning("Nenhum negÃ³cio encontrado com os filtros aplicados.")
         return
 
     for col in ['v_real', 'profit', 'margin']:
@@ -72,12 +72,12 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
     wr = (tw / (tw + tl) * 100) if (tw + tl) > 0 else 0
     tp = df[~df['status'].isin(['concluido', 'perdido'])]['v_real'].sum()
 
-    # ── KPIs ───────────────────────────────────────────────────────────────────
+    # ââ KPIs âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     k1, k2, k3, k4, k5 = st.columns(5)
     for col, lbl, val in [
         (k1, "Pipeline Ativo",   f"R$ {tp:,.0f}"),
-        (k2, "Negócios Ativos",  str(ta)),
-        (k3, "Taxa Conversão",   f"{wr:.0f}%"),
+        (k2, "NegÃ³cios Ativos",  str(ta)),
+        (k3, "Taxa ConversÃ£o",   f"{wr:.0f}%"),
         (k4, "Ganhos/Perdidos",  f"{tw}/{tl}"),
         (k5, "Total Filtrado",   str(len(df))),
     ]:
@@ -87,9 +87,9 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
             unsafe_allow_html=True,
         )
 
-    # ── Funnel ─────────────────────────────────────────────────────────────────
+    # ââ Funnel âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     st.markdown("<br>", unsafe_allow_html=True)
-    st.subheader("Funil de Conversão")
+    st.subheader("Funil de ConversÃ£o")
     sc = df.groupby('status').size().to_dict()
     mx = max(sc.values()) if sc else 1
     for sk in STATUS_KEYS:
@@ -109,9 +109,9 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
             unsafe_allow_html=True,
         )
 
-    # ── Deal list ──────────────────────────────────────────────────────────────
+    # ââ Deal list ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
     st.markdown("<br>", unsafe_allow_html=True)
-    st.subheader("Todos os Negócios")
+    st.subheader("Todos os NegÃ³cios")
     pipe_ids = set(df['id'].tolist())
     pipe_deals = [d for d in all_deals if d['id'] in pipe_ids]
 
@@ -136,33 +136,43 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
         del_key   = f"pipe_deleting_{deal_id}"
         note_key  = f"pipe_noting_{deal_id}"
 
-        # ── Gmail-style row: deal info | ✏ | 🗑 | 📝 ─────────────────────────
-        info_col, c_edit, c_del, c_note = st.columns([9, 1, 1, 1])
+        # ââ Unified card â Ghost Button Pattern ââââââââââââââââââââââââââââââ
+        # Visual action buttons are HTML; they call window.__triggerDeal()
+        # which clicks the invisible Streamlit ghost buttons below.
+        st.markdown(f"""<div class='deal-card'>
+  <div style='flex:0 0 10px;margin-right:2px;'>{status_dot(sk)}</div>
+  <div style='flex:2;min-width:100px;'>
+    <div style='font-weight:600;font-size:14px;line-height:1.3;'>{cn}</div>
+    <small style='color:#9CA3AF;font-size:11px;'>{status_key_to_label(sk)}</small>
+  </div>
+  <div style='flex:0.55;text-align:center;'>
+    <div class='deal-mv'>{qt}</div>
+    <small style='color:#9CA3AF;font-size:11px;'>Testes</small>
+  </div>
+  <div style='flex:1;text-align:right;'>
+    <div class='deal-mv'>R$ {up:,.2f}</div>
+    <small style='color:#9CA3AF;font-size:11px;'>PreÃ§o Unit.</small>
+  </div>
+  <div style='flex:1;text-align:right;'>
+    <div class='deal-mv'>R$ {vr:,.0f}</div>
+    <small style='color:#9CA3AF;font-size:11px;'>Total</small>
+  </div>
+  <div style='flex:1;text-align:right;'>
+    <div class='deal-mv' style='color:{mg_color};'>R$ {pr:,.0f}</div>
+    <small style='color:#9CA3AF;font-size:11px;'>Lucro ({mg:.0f}%)</small>
+  </div>
+  <div style='flex:0.65;text-align:right;color:#9CA3AF;font-size:11px;white-space:nowrap;'>{dt_fmt}</div>
+  <div class='deal-actions'>
+    <button class='deal-action-btn' onclick="window.__triggerDeal('{deal_id}','pe')" title='Editar negÃ³cio'>&#9998;</button>
+    <button class='deal-action-btn deal-action-del' onclick="window.__triggerDeal('{deal_id}','pd')" title='Excluir negÃ³cio'>&#128465;</button>
+    <button class='deal-action-btn' onclick="window.__triggerDeal('{deal_id}','pno')" title='Adicionar nota'>&#128203;</button>
+  </div>
+</div>""", unsafe_allow_html=True)
 
-        with info_col:
-            st.markdown(f"""
-            <div style='display:flex;align-items:center;padding:10px 16px;border-radius:10px;
-                 border:1px solid #e2e8f0;margin:4px 0;background:#fafafa;gap:12px;'>
-              <div style='flex:0 0 10px;'>{status_dot(sk)}</div>
-              <div style='flex:2;'><strong>{cn}</strong><br>
-                <small style='color:#9CA3AF;'>{status_key_to_label(sk)}</small></div>
-              <div style='flex:0.6;text-align:center;'>
-                <div style='font-weight:600;font-size:13px;'>{qt}</div>
-                <small style='color:#9CA3AF;'>Testes</small></div>
-              <div style='flex:1;text-align:right;'>
-                <div style='font-weight:600;font-size:13px;'>R$ {up:,.2f}</div>
-                <small style='color:#9CA3AF;'>Preço Unit.</small></div>
-              <div style='flex:1;text-align:right;'>
-                <div style='font-weight:600;'>R$ {vr:,.0f}</div>
-                <small style='color:#9CA3AF;'>Total</small></div>
-              <div style='flex:1;text-align:right;'>
-                <div style='font-weight:600;color:{mg_color};'>R$ {pr:,.0f}</div>
-                <small style='color:#9CA3AF;'>Lucro ({mg:.0f}%)</small></div>
-              <div style='flex:0.7;text-align:right;color:#9CA3AF;font-size:12px;'>{dt_fmt}</div>
-            </div>""", unsafe_allow_html=True)
-
-        with c_edit:
-            if st.button("✏", key=f"icon_pe_{deal_id}", help="Editar negócio"):
+        # Ghost Streamlit buttons â invisible (height:0), triggered by JS above
+        _gc1, _gc2, _gc3, _ = st.columns([1, 1, 1, 100])
+        with _gc1:
+            if st.button("e", key=f"icon_pe_{deal_id}", help="Editar negÃ³cio"):
                 current = st.session_state.get(edit_key, False)
                 st.session_state[edit_key] = not current
                 for d in pipe_deals:
@@ -171,24 +181,22 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                 st.session_state.pop(del_key, None)
                 st.session_state.pop(note_key, None)
                 st.rerun()
-
-        with c_del:
-            if st.button("🗑", key=f"icon_pd_{deal_id}", help="Excluir negócio"):
+        with _gc2:
+            if st.button("d", key=f"icon_pd_{deal_id}", help="Excluir negÃ³cio"):
                 current = st.session_state.get(del_key, False)
                 st.session_state[del_key] = not current
                 st.session_state.pop(edit_key, None)
                 st.session_state.pop(note_key, None)
                 st.rerun()
-
-        with c_note:
-            if st.button("📝", key=f"icon_pno_{deal_id}", help="Adicionar nota"):
+        with _gc3:
+            if st.button("n", key=f"icon_pno_{deal_id}", help="Adicionar nota"):
                 current = st.session_state.get(note_key, False)
                 st.session_state[note_key] = not current
                 st.session_state.pop(edit_key, None)
                 st.session_state.pop(del_key, None)
                 st.rerun()
 
-        # ── Inline edit form ───────────────────────────────────────────────────
+        # ââ Inline edit form ââââââââââââââââââââââââââââââââââââââââââââââââââ
         if st.session_state.get(edit_key, False):
             st.markdown(
                 "<div style='padding:4px 0 8px 0;border-left:3px solid #8DAE10;"
@@ -199,13 +207,13 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
             _notes = (pd_deal.get('clients', {}) or {}).get('notes', '') or ''
             with st.form(f"edit_form_{deal_id}"):
                 en1, en2 = st.columns([1, 2])
-                edit_cn    = en1.text_input("Cliente",       value=cn,     key=f"ecn_{deal_id}")
-                edit_notes = en2.text_input("Observações",   value=_notes, key=f"eno_{deal_id}")
+                edit_cn    = en1.text_input("Cliente",       value=cn,      key=f"ecn_{deal_id}")
+                edit_notes = en2.text_input("ObservaÃ§Ãµes",   value=_notes,  key=f"eno_{deal_id}")
 
                 ef1, ef2, ef3 = st.columns(3)
-                edit_qty  = ef1.number_input("Qtd Testes",   value=int(pd_deal['qty']),         min_value=0,   step=1,   key=f"eq_{deal_id}")
-                edit_cost = ef2.number_input("Custo USD",    value=float(pd_deal['cost_usd']),   min_value=0.0, step=0.5, format="%.2f", key=f"ec_{deal_id}")
-                edit_unit = ef3.number_input("Preço Unit. R$", value=up,                         min_value=0.0, step=5.0, format="%.2f", key=f"eu_{deal_id}")
+                edit_qty  = ef1.number_input("Qtd Testes",    value=int(pd_deal['qty']),        min_value=0,   step=1,   key=f"eq_{deal_id}")
+                edit_cost = ef2.number_input("Custo USD",     value=float(pd_deal['cost_usd']), min_value=0.0, step=0.5, format="%.2f", key=f"ec_{deal_id}")
+                edit_unit = ef3.number_input("PreÃ§o Unit. R$", value=up,                        min_value=0.0, step=5.0, format="%.2f", key=f"eu_{deal_id}")
 
                 ef4, ef5, ef6 = st.columns(3)
                 auto_total = round(edit_unit * edit_qty, 2) if (edit_unit > 0 and edit_qty > 0) else float(pd_deal['v_real'])
@@ -275,9 +283,9 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                     st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
 
-        # ── Delete confirmation ────────────────────────────────────────────────
+        # ââ Delete confirmation âââââââââââââââââââââââââââââââââââââââââââââââ
         if st.session_state.get(del_key, False):
-            st.warning(f"Excluir **{cn}**? Esta ação não pode ser desfeita.")
+            st.warning(f"Excluir **{cn}**? Esta aÃ§Ã£o nÃ£o pode ser desfeita.")
             dc1, dc2, _ = st.columns([1, 1, 4])
             if dc1.button("Sim, excluir", key=f"py_{deal_id}"):
                 try:
@@ -286,7 +294,7 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                     invalidate_deals_cache()
                     if st.session_state.selected_deal_id == deal_id:
                         clear_form()
-                    st.toast(f"'{cn}' excluído!")
+                    st.toast(f"'{cn}' excluÃ­do!")
                     st.session_state[del_key] = False
                     st.rerun()
                 except Exception as e:
@@ -295,7 +303,7 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                 st.session_state[del_key] = False
                 st.rerun()
 
-        # ── Quick note panel ───────────────────────────────────────────────────
+        # ââ Quick note panel ââââââââââââââââââââââââââââââââââââââââââââââââââ
         if st.session_state.get(note_key, False):
             _notes = (pd_deal.get('clients', {}) or {}).get('notes', '') or ''
             st.markdown(
@@ -303,12 +311,12 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                 "padding-left:16px;margin:4px 0;'>",
                 unsafe_allow_html=True,
             )
-            st.markdown(f"**Nota — {cn}**")
+            st.markdown(f"**Nota â {cn}**")
             with st.form(f"note_form_{deal_id}"):
                 new_notes = st.text_area(
-                    "Observações", value=_notes,
+                    "ObservaÃ§Ãµes", value=_notes,
                     key=f"nt_{deal_id}", height=80,
-                    placeholder="Adicione observações sobre este negócio ou cliente...",
+                    placeholder="Adicione observaÃ§Ãµes sobre este negÃ³cio ou cliente...",
                 )
                 nf1, nf2 = st.columns(2)
                 if nf1.form_submit_button("Salvar nota", use_container_width=True):
@@ -319,7 +327,7 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                                 .eq('id', old_cid).execute()
                             st.toast(f"Nota de '{cn}' salva!")
                         else:
-                            st.warning("Cliente não encontrado para salvar a nota.")
+                            st.warning("Cliente nÃ£o encontrado para salvar a nota.")
                         st.session_state[note_key] = False
                         st.rerun()
                     except Exception as e:
