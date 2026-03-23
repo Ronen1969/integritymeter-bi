@@ -162,7 +162,7 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
             </div>""", unsafe_allow_html=True)
 
         with c_edit:
-            if st.button("✏", key=f"pe_{deal_id}", help="Editar negócio"):
+            if st.button("✏", key=f"icon_pe_{deal_id}", help="Editar negócio"):
                 current = st.session_state.get(edit_key, False)
                 st.session_state[edit_key] = not current
                 for d in pipe_deals:
@@ -173,7 +173,7 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                 st.rerun()
 
         with c_del:
-            if st.button("🗑", key=f"pd_{deal_id}", help="Excluir negócio"):
+            if st.button("🗑", key=f"icon_pd_{deal_id}", help="Excluir negócio"):
                 current = st.session_state.get(del_key, False)
                 st.session_state[del_key] = not current
                 st.session_state.pop(edit_key, None)
@@ -181,7 +181,7 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                 st.rerun()
 
         with c_note:
-            if st.button("📝", key=f"pno_{deal_id}", help="Adicionar nota"):
+            if st.button("📝", key=f"icon_pno_{deal_id}", help="Adicionar nota"):
                 current = st.session_state.get(note_key, False)
                 st.session_state[note_key] = not current
                 st.session_state.pop(edit_key, None)
