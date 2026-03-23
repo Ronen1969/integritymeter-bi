@@ -81,40 +81,45 @@ html, body, [class*="css"] {
 }
 
 .kpi-card {
-    padding: 10px 8px;
+    padding: 14px 10px 12px;
     border-radius: 12px;
     background: linear-gradient(135deg, #f8fafc, #f1f5f9);
     border: 1px solid #e2e8f0;
     text-align: center;
-    height: 90px;
+    min-height: 100px;
+    height: auto;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    overflow: hidden;
     box-sizing: border-box;
     width: 100%;
 }
 .kpi-value {
-    font-size: clamp(14px, 1.6vw, 20px);
+    font-size: clamp(16px, 1.6vw, 22px);
     font-weight: 700;
-    color: #8DAE10;
-    margin: 2px 0;
+    color: #111827;
+    margin: 3px 0 2px;
     line-height: 1.2;
     overflow-wrap: break-word;
     word-break: break-word;
     max-width: 100%;
 }
 .kpi-label {
-    font-size: clamp(8px, 0.75vw, 10px);
+    font-size: 11px;
     color: #9CA3AF;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.05em;
+    font-weight: 500;
     line-height: 1.2;
-    overflow-wrap: anywhere;
-    word-break: break-word;
     max-width: 100%;
     margin-bottom: 2px;
+}
+.kpi-delta {
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 4px;
+    line-height: 1.2;
 }
 
 .funnel-row {
@@ -147,14 +152,30 @@ html, body, [class*="css"] {
 }
 
 .alert-card {
-    padding: 12px 16px;
-    border-radius: 10px;
-    margin: 6px 0;
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin: 5px 0;
     font-size: 13px;
+    line-height: 1.5;
 }
-.alert-warning { background: #FFF7ED; border: 1px solid #FDBA74; color: #9A3412; }
-.alert-danger   { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
-.alert-info     { background: #EFF6FF; border: 1px solid #93C5FD; color: #1E40AF; }
+.alert-warning {
+    background: #FFFBEB;
+    border-left: 3px solid #D97706;
+    border-top: none; border-right: none; border-bottom: none;
+    color: #92400E;
+}
+.alert-danger {
+    background: #FEF2F2;
+    border-left: 3px solid #DC2626;
+    border-top: none; border-right: none; border-bottom: none;
+    color: #991B1B;
+}
+.alert-info {
+    background: #EFF6FF;
+    border-left: 3px solid #3B82F6;
+    border-top: none; border-right: none; border-bottom: none;
+    color: #1E40AF;
+}
 
 .target-progress {
     background: #f1f5f9;
