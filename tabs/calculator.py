@@ -1,4 +1,4 @@
-""" tabs/calculator.py â Tab 1: Novo NegÃ³cio / Calculadora de Margem. """
+""" tabs/calculator.py — Tab 1: Novo Negócio / Calculadora de Margem. """
 from datetime import datetime, date
 import streamlit as st
 from config import sb
@@ -17,9 +17,9 @@ def render_calculator(all_deals: list, sidebar_cfg: dict) -> None:
 
     if st.session_state.just_loaded:
         st.markdown(
-            f"<div class='loaded-banner'>Editando negÃ³cio: "
+            f"<div class='loaded-banner'>Editando negócio: "
             f"<strong>{st.session_state.form_client}</strong>"
-            f" â altere os dados e clique em \"Atualizar NegÃ³cio\"</div>",
+            f" — altere os dados e clique em \"Atualizar Negócio\"</div>",
             unsafe_allow_html=True,
         )
         st.session_state.just_loaded = False
@@ -27,7 +27,7 @@ def render_calculator(all_deals: list, sidebar_cfg: dict) -> None:
         st.markdown(
             "<div style='padding:12px 16px;border-radius:8px;background:#EFF6FF;"
             "border:1px solid #93C5FD;color:#1E40AF;font-size:14px;margin-bottom:12px;'>"
-            "Preencha os dados abaixo para simular a margem e criar um novo negÃ³cio."
+            "Preencha os dados abaixo para simular a margem e criar um novo negócio."
             "</div>",
             unsafe_allow_html=True,
         )
@@ -45,7 +45,7 @@ def render_calculator(all_deals: list, sidebar_cfg: dict) -> None:
         client_name = i1.text_input(
             "Cliente",
             key="form_client",
-            help="Nome da empresa ou pessoa jurÃ­dica contratante",
+            help="Nome da empresa ou pessoa jurídica contratante",
         )
         status_deal = i2.selectbox("Status", STATUS_LABELS, index=st.session_state.form_status_idx)
 
@@ -58,20 +58,20 @@ def render_calculator(all_deals: list, sidebar_cfg: dict) -> None:
             st.session_state.form_cost = default_cost
 
         cost = i5.number_input(
-            "Custo UnitÃ¡rio (USD)",
+            "Custo Unitário (USD)",
             key="form_cost",
             min_value=0.0,
             step=0.5,
             format="%.2f",
-            help="PadrÃ£o definido na barra lateral â editÃ¡vel por negÃ³cio",
+            help="Padrão definido na barra lateral — editável por negócio",
         )
         unit_price = i6.number_input(
-            "PreÃ§o UnitÃ¡rio (R$)",
+            "Preço Unitário (R$)",
             key="form_unit_price",
             min_value=0.0,
             step=5.0,
             format="%.2f",
-            help="PreÃ§o por teste cobrado do cliente",
+            help="Preço por teste cobrado do cliente",
         )
 
         if unit_price > 0 and qty > 0:
@@ -83,11 +83,11 @@ def render_calculator(all_deals: list, sidebar_cfg: dict) -> None:
             min_value=0.0,
             step=100.0,
             format="%.2f",
-            help="Calculado automaticamente: PreÃ§o UnitÃ¡rio Ã Qtd. Testes",
+            help="Calculado automaticamente: Preço Unitário × Qtd. Testes",
         )
-        notes = st.text_area("ObservaÃ§Ãµes", key="form_notes", height=68)
+        notes = st.text_area("Observações", key="form_notes", height=68)
 
-    # ââ CÃ¡lculos ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+    # ── Cálculos ──────────────────────────────────────────────────────────────
     fx          = st.session_state.dolar_live
     custo_brl   = qty * cost * fx
     imp_presumido = v_real * (tax_p / 100)
@@ -107,7 +107,7 @@ def render_calculator(all_deals: list, sidebar_cfg: dict) -> None:
         if v_real > 0:
             st.markdown(
                 f"<div class='main-card'>"
-                f"<p style='color:#9CA3AF;font-size:12px;'>LUCRO LÃQUIDO</p>"
+                f"<p style='color:#9CA3AF;font-size:12px;'>LUCRO LÍQUIDO</p>"
                 f"<h1 style='color:{profit_color};margin:0;font-size:42px;'>"
                 f"R$ {float(profit):,.2f}</h1>"
                 f"<p style='color:{margin_color};font-weight:600;'>"
@@ -118,7 +118,7 @@ def render_calculator(all_deals: list, sidebar_cfg: dict) -> None:
         else:
             st.markdown(
                 "<div class='main-card'>"
-                "<p style='color:#9CA3AF;font-size:12px;'>LUCRO LÃQUIDO</p>"
+                "<p style='color:#9CA3AF;font-size:12px;'>LUCRO LÍQUIDO</p>"
                 "<h1 style='color:#9CA3AF;margin:0;font-size:42px;'>R$ 0,00</h1>"
                 "<p style='color:#9CA3AF;font-weight:600;'>Preencha os dados para calcular</p>"
                 "</div>",
@@ -126,22 +126,22 @@ def render_calculator(all_deals: list, sidebar_cfg: dict) -> None:
             )
 
         st.markdown("<br>", unsafe_allow_html=True)
-        with st.expander("Detalhamento do CÃ¡lculo", expanded=(v_real > 0)):
+        with st.expander("Detalhamento do Cálculo", expanded=(v_real > 0)):
             st.markdown(f"""
 | Item | Valor |
 |---|---|
 | Custo Total (USD) | $ {qty * cost:,.2f} |
-| CÃ¢mbio USDâBRL | R$ {fx:.3f} |
+| Câmbio USD→BRL | R$ {fx:.3f} |
 | **Custo Total (BRL)** | **R$ {custo_brl:,.2f}** |
 | Lucro Presumido ({tax_p:.2f}%) | R$ {imp_presumido:,.2f} |
-| Taxa de AdministraÃ§Ã£o ({adm_p:.2f}%) | R$ {imp_admin:,.2f} |
+| Taxa de Administração ({adm_p:.2f}%) | R$ {imp_admin:,.2f} |
 | **Total de Impostos ({total_tax_pct:.2f}%)** | **R$ {impostos:,.2f}** |
 | Venda (BRL) | R$ {v_real:,.2f} |
-| **Lucro LÃ­quido** | **R$ {profit:,.2f}** |
+| **Lucro Líquido** | **R$ {profit:,.2f}** |
 """)
 
     st.markdown("<br>", unsafe_allow_html=True)
-    save_label = "ATUALIZAR NEGÃCIO" if is_editing else "CRIAR NEGÃCIO"
+    save_label = "ATUALIZAR NEGÓCIO" if is_editing else "CRIAR NEGÓCIO"
     if is_editing:
         c1, c2 = st.columns(2)
     else:
@@ -190,7 +190,7 @@ def render_calculator(all_deals: list, sidebar_cfg: dict) -> None:
                             'old_value':  old_status,
                             'new_value':  status_key,
                         }).execute()
-                    st.toast(f"NegÃ³cio '{client_name}' atualizado!")
+                    st.toast(f"Negócio '{client_name}' atualizado!")
                 else:
                     new_deal = sb.table('deals').insert(deal_data).execute()
                     sb.table('deal_events').insert({
@@ -198,7 +198,7 @@ def render_calculator(all_deals: list, sidebar_cfg: dict) -> None:
                         'event_type': 'created',
                         'new_value':  status_key,
                     }).execute()
-                    st.toast(f"NegÃ³cio '{client_name}' criado com sucesso!")
+                    st.toast(f"Negócio '{client_name}' criado com sucesso!")
                 invalidate_deals_cache()
                 clear_form()
                 st.rerun()
@@ -207,6 +207,6 @@ def render_calculator(all_deals: list, sidebar_cfg: dict) -> None:
 
     if is_editing and c2 is not None:
         if c2.button("DUPLICAR", use_container_width=True,
-                     help="Cria uma cÃ³pia deste negÃ³cio como novo"):
+                     help="Cria uma cópia deste negócio como novo"):
             st.session_state.selected_deal_id = None
-            st.toast("Duplicado! Altere os dados e clique em 'Criar NegÃ³cio'.")
+            st.toast("Duplicadoj! Altere os dados e clique em 'Criar Negócio'.")
