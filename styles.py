@@ -212,9 +212,25 @@ html, body, [class*="css"] {
     min-width: 30px;
 }
 
-.stColumn:has(> div > div > .stButton) .stButton > button {
-    min-height: 36px !important;
-    padding: 4px 8px !important;
+/* ── Action buttons inside columns: small text-style, no green fill ──
+   Form submit buttons (.stFormSubmitButton) are unaffected and stay green. */
+[data-testid="stColumn"] .stButton > button {
+    background-color: transparent !important;
+    color: #6B7280 !important;
+    border: 1px solid #E5E7EB !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    padding: 0 10px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    box-shadow: none !important;
+    border-radius: 6px !important;
+    line-height: 28px !important;
+}
+[data-testid="stColumn"] .stButton > button:hover {
+    background-color: #F3F4F6 !important;
+    border-color: #9CA3AF !important;
+    color: #1F2937 !important;
 }
 
 /* ── Normalize filter-row widget heights ── */
