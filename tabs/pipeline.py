@@ -156,10 +156,10 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
           <div style='flex:0.7;text-align:right;color:#9CA3AF;font-size:12px;'>{dt_fmt}</div>
         </div>""", unsafe_allow_html=True)
 
-        # Compact action buttons — not full-width so they size to their label text
+        # Small symmetric action buttons — styled via global column CSS in styles.py
         ac1, ac2, _ = st.columns([1, 1, 6])
         with ac1:
-            if st.button("✏️ Editar", key=f"pe_{deal_id}"):
+            if st.button("✏ Editar", key=f"pe_{deal_id}"):
                 current = st.session_state.get(edit_key, False)
                 st.session_state[edit_key] = not current
                 for d in pipe_deals:
@@ -168,7 +168,7 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                 st.session_state.pop(del_key, None)
                 st.rerun()
         with ac2:
-            if st.button("🗑️ Excluir", key=f"pd_{deal_id}"):
+            if st.button("🗑 Excluir", key=f"pd_{deal_id}"):
                 current = st.session_state.get(del_key, False)
                 st.session_state[del_key] = not current
                 st.session_state.pop(edit_key, None)
