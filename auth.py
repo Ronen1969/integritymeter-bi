@@ -1,4 +1,4 @@
-""" auth.py â Authentication: login, logout, session restore, user creation, welcome email. """
+""" auth.py — Authentication: login, logout, session restore, user creation, welcome email. """
 import os
 import smtplib
 from email.mime.text import MIMEText
@@ -9,7 +9,7 @@ import streamlit as st
 from config import sb, sb_admin, logger
 
 
-# ââ Session state initialisation ââââââââââââââââââââââââââââââââââââââââââââââ
+# ── Session state initialisation ──────────────────────────────────────────────
 def init_auth() -> None:
     if 'user' not in st.session_state:
         st.session_state.user = None
@@ -19,7 +19,7 @@ def init_auth() -> None:
         try_restore_session()
 
 
-# ââ Core auth functions ââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# ── Core auth functions ────────────────────────────────────────────────────────
 def login(email: str, password: str):
     try:
         res = sb.auth.sign_in_with_password({"email": email, "password": password})
@@ -51,7 +51,7 @@ def try_restore_session() -> bool:
                 st.session_state.user_profile = profile.data[0]
             return True
     except Exception as e:
-        logger.warning(f"Falha ao restaurar sessÃ£o: {e}")
+        logger.warning(f"Falha ao restaurar sessão: {e}")
     return False
 
 
@@ -73,7 +73,7 @@ def is_admin() -> bool:
     )
 
 
-# ââ Welcome email ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# ── Welcome email ──────────────────────────────────────────────────────────────
 def send_welcome_email(to_email: str, user_name: str, temp_password: str, app_url: str = ""):
     try:
         smtp_host = st.secrets.get("SMTP_HOST", "smtp.gmail.com")
@@ -81,11 +81,11 @@ def send_welcome_email(to_email: str, user_name: str, temp_password: str, app_ur
         smtp_user = st.secrets.get("SMTP_USER", "")
         smtp_pass = st.secrets.get("SMTP_PASS", "")
         if not smtp_user or not smtp_pass:
-            return False, "SMTP nÃ£o configurado. Adicione SMTP_USER e SMTP_PASS nos secrets."
+            return False, "SMTP não configurado. Adicione SMTP_USER e SMTP_PASS nos secrets."
         msg = MIMEMultipart()
         msg['From'] = smtp_user
         msg['To'] = to_email
-        msg['Subject'] = "Bem-vindo ao IntegrityMeter BI â Suas Credenciais"
+        msg['Subject'] = "Bem-vindo ao IntegrityMeter BI — Suas Credenciais"
         btn_html = (
             f'<p style="margin:15px 0 5px;text-align:center;">'
             f'<a href="{app_url}" style="background-color:#8DAE10;color:#ffffff;'
@@ -99,18 +99,18 @@ def send_welcome_email(to_email: str, user_name: str, temp_password: str, app_ur
             padding:40px;border:1px solid #e2e8f0;">
   <div style="text-align:center;margin-bottom:30px;">
     <h1 style="color:#8DAE10;margin:0;">IntegrityMeter BI</h1>
-    <p style="color:#6B7280;font-size:14px;">Plataforma de GestÃ£o de Margem</p>
+    <p style="color:#6B7280;font-size:14px;">Plataforma de Gestão de Margem</p>
   </div>
-  <h2 style="color:#1F2937;">OlÃ¡, {user_name}!</h2>
+  <h2 style="color:#1F2937;">Olá, {user_name}!</h2>
   <p style="color:#374151;line-height:1.6;">
     Sua conta foi criada na plataforma IntegrityMeter BI.
-    Abaixo estÃ£o suas credenciais de acesso:
+    Abaixo estão suas credenciais de acesso:
   </p>
   <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;
               padding:20px;margin:20px 0;">
     <p style="margin:5px 0;color:#1F2937;"><strong>E-mail:</strong> {to_email}</p>
     <p style="margin:5px 0;color:#1F2937;">
-      <strong>Senha temporÃ¡ria:</strong> {temp_password}
+      <strong>Senha temporária:</strong> {temp_password}
     </p>
     {btn_html}
   </div>
@@ -120,16 +120,16 @@ def send_welcome_email(to_email: str, user_name: str, temp_password: str, app_ur
       Importante: Altere sua senha no primeiro acesso!
     </p>
     <p style="color:#9a3412;margin:5px 0 0;font-size:13px;">
-      ApÃ³s fazer login, vÃ¡ ao Painel e clique em "Alterar Senha" na barra lateral.
+      Após fazer login, vá ao Painel e clique em "Alterar Senha" na barra lateral.
     </p>
   </div>
   <p style="color:#374151;line-height:1.6;">
-    Em anexo vocÃª encontra o Manual do UsuÃ¡rio com instruÃ§Ãµes detalhadas.
+    Em anexo você encontra o Manual do Usuário com instruções detalhadas.
   </p>
   <div style="text-align:center;margin-top:30px;padding-top:20px;
               border-top:1px solid #e2e8f0;">
     <p style="color:#9CA3AF;font-size:12px;">
-      IntegrityMeter BI â GestÃ£o de Margem e Pipeline de Vendas
+      IntegrityMeter BI — Gestão de Margem e Pipeline de Vendas
     </p>
   </div>
 </div>
@@ -156,7 +156,7 @@ def send_welcome_email(to_email: str, user_name: str, temp_password: str, app_ur
         return False, str(e)
 
 
-# ââ Login screen âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+# ── Login screen ───────────────────────────────────────────────────────────────
 def render_login() -> None:
     """Render a full two-panel login screen."""
 
@@ -236,42 +236,42 @@ def render_login() -> None:
 
     left, right = st.columns([1, 1], gap="large")
 
-    # ââ Left: branding panel ââââââââââââââââââââââââââââââââââââââââââââââââââ
+    # ── Left: branding panel ──────────────────────────────────────────────────
     with left:
         st.markdown("""
 <div class='login-brand'>
-  <div style='font-size:48px;margin-bottom:20px;'>ð</div>
+  <div style='font-size:48px;margin-bottom:20px;'>📊</div>
   <h1>IntegrityMeter BI</h1>
-  <p class='tagline'>Plataforma de GestÃ£o de Margem<br>e Pipeline de Vendas</p>
+  <p class='tagline'>Plataforma de Gestão de Margem<br>e Pipeline de Vendas</p>
 
   <div class='login-feature'>
-    <span class='login-feature-icon'>â</span>
-    <span class='login-feature-text'>Calcule margens em tempo real com cÃ¢mbio atualizado</span>
+    <span class='login-feature-icon'>✅</span>
+    <span class='login-feature-text'>Calcule margens em tempo real com câmbio atualizado</span>
   </div>
   <div class='login-feature'>
-    <span class='login-feature-icon'>ð</span>
+    <span class='login-feature-icon'>📈</span>
     <span class='login-feature-text'>Acompanhe seu pipeline de vendas por status</span>
   </div>
   <div class='login-feature'>
-    <span class='login-feature-icon'>ðµ</span>
-    <span class='login-feature-text'>Taxa de cÃ¢mbio USD/BRL em tempo real</span>
+    <span class='login-feature-icon'>💵</span>
+    <span class='login-feature-text'>Taxa de câmbio USD/BRL em tempo real</span>
   </div>
   <div class='login-feature'>
-    <span class='login-feature-icon'>ð¯</span>
+    <span class='login-feature-icon'>🎯</span>
     <span class='login-feature-text'>Alertas inteligentes e metas mensais</span>
   </div>
   <div class='login-feature'>
-    <span class='login-feature-icon'>ð</span>
-    <span class='login-feature-text'>RelatÃ³rios e histÃ³rico de negÃ³cios</span>
+    <span class='login-feature-icon'>📋</span>
+    <span class='login-feature-text'>Relatórios e histórico de negócios</span>
   </div>
 
   <div class='login-footer'>
-    Acesso restrito a funcionÃ¡rios da IntegrityMeter
+    Acesso restrito a funcionários da IntegrityMeter
   </div>
 </div>
 """, unsafe_allow_html=True)
 
-    # ââ Right: form âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+    # ── Right: form ───────────────────────────────────────────────────────────
     with right:
         st.markdown("<div class='login-form-wrap'>", unsafe_allow_html=True)
         st.markdown("<h2>Entrar na sua conta</h2>", unsafe_allow_html=True)
@@ -297,12 +297,12 @@ def render_login() -> None:
 
         with st.expander("Esqueci minha senha"):
             reset_email = st.text_input(
-                "Digite seu e-mail para recuperaÃ§Ã£o",
+                "Digite seu e-mail para recuperação",
                 placeholder="seu@email.com",
                 key="reset_email_input",
             )
             if st.button(
-                "Enviar link de recuperaÃ§Ã£o",
+                "Enviar link de recuperação",
                 key="send_reset_btn",
                 use_container_width=True,
             ):
@@ -310,7 +310,7 @@ def render_login() -> None:
                     try:
                         sb.auth.reset_password_for_email(reset_email.strip())
                         st.success(
-                            "E-mail de recuperaÃ§Ã£o enviado! Verifique sua caixa de entrada."
+                            "E-mail de recuperação enviado! Verifique sua caixa de entrada."
                         )
                     except Exception as e:
                         st.error(f"Erro ao enviar e-mail: {e}")
