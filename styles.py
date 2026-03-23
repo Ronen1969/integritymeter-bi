@@ -212,23 +212,22 @@ html, body, [class*="css"] {
     min-width: 30px;
 }
 
-/* ── Gmail-style icon action buttons in columns ──
-   Transparent, no border, round hover — like Gmail row icons.
-   Form submit buttons (.stFormSubmitButton) are unaffected and stay green. */
-[data-testid="stColumn"] .stButton > button {
+/* ── Gmail-style icon action buttons (st-key-icon_ prefix) ──
+   JS override handles the actual styling below. This is a fallback. */
+[class*="st-key-icon_"] button {
     background-color: transparent !important;
     color: #5F6368 !important;
     border: none !important;
-    min-height: 34px !important;
-    height: 34px !important;
-    padding: 0 6px !important;
-    font-size: 17px !important;
-    font-weight: 400 !important;
     box-shadow: none !important;
+    font-size: 17px !important;
+    padding: 0 6px !important;
+    height: 34px !important;
+    min-height: 34px !important;
     border-radius: 4px !important;
     line-height: 34px !important;
+    font-weight: 400 !important;
 }
-[data-testid="stColumn"] .stButton > button:hover {
+[class*="st-key-icon_"] button:hover {
     background-color: #F1F3F4 !important;
     color: #202124 !important;
     border: none !important;
@@ -244,7 +243,7 @@ html, body, [class*="css"] {
 
 [data-testid="stMultiSelect"] [data-baseweb="select"] > div:first-child {
     min-height: 42px !important;
-    align-items: center !important;
+    align-items: center;
     border-radius: 8px !important;
     border-color: #e2e8f0 !important;
 }
@@ -276,6 +275,7 @@ html, body, [class*="css"] {
 """, unsafe_allow_html=True)
 
     # Auto-select number inputs on focus + disable zero-height iframes
+    # + inject icon-button styles AFTER emotion CSS (beats !important cascade)
     components.html("""
 <script>
 var doc = window.parent.document;
@@ -291,7 +291,36 @@ doc.addEventListener('focusin', function(e) {
         }
     });
 })();
+
+// ── Gmail icon-button styler ──
+// Uses setProperty(...,'important') so inline !important beats emotion CSS.
+function applyIconBtnStyles() {
+    doc.querySelectorAll('[class*="st-key-icon_"] button').forEach(function(btn) {
+        btn.style.setProperty('background-color', 'transparent', 'important');
+        btn.style.setProperty('border', 'none', 'important');
+        btn.style.setProperty('box-shadow', 'none', 'important');
+        btn.style.setProperty('color', '#5F6368', 'important');
+        btn.style.setProperty('font-size', '18px', 'important');
+        btn.style.setProperty('padding', '0 4px', 'important');
+        btn.style.setProperty('height', '34px', 'important');
+        btn.style.setProperty('min-height', '34px', 'important');
+        btn.style.setProperty('border-radius', '4px', 'important');
+        btn.style.setProperty('line-height', '34px', 'important');
+        btn.style.setProperty('font-weight', '400', 'important');
+        btn.style.setProperty('cursor', 'pointer', 'important');
+        btn.onmouseenter = function() {
+            this.style.setProperty('background-color', '#F1F3F4', 'important');
+            this.style.setProperty('color', '#202124', 'important');
+        };
+        btn.onmouseleave = function() {
+            this.style.setProperty('background-color', 'transparent', 'important');
+            this.style.setProperty('color', '#5F6368', 'important');
+        };
+    });
+}
+applyIconBtnStyles();
 new MutationObserver(function() {
+    applyIconBtnStyles();
     doc.querySelectorAll('iframe').forEach(function(f) {
         if (f.height === '0' || f.style.height === '0px' || f.getBoundingClientRect().height < 2) {
             f.style.pointerEvents = 'none';
