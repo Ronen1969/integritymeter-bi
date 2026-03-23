@@ -212,25 +212,26 @@ html, body, [class*="css"] {
     min-width: 30px;
 }
 
-/* ── Action buttons inside columns: small text-style, no green fill ──
+/* ── Gmail-style icon action buttons in columns ──
+   Transparent, no border, round hover — like Gmail row icons.
    Form submit buttons (.stFormSubmitButton) are unaffected and stay green. */
 [data-testid="stColumn"] .stButton > button {
     background-color: transparent !important;
-    color: #6B7280 !important;
-    border: 1px solid #E5E7EB !important;
-    min-height: 28px !important;
-    height: 28px !important;
-    padding: 0 10px !important;
-    font-size: 13px !important;
-    font-weight: 500 !important;
+    color: #5F6368 !important;
+    border: none !important;
+    min-height: 34px !important;
+    height: 34px !important;
+    padding: 0 6px !important;
+    font-size: 17px !important;
+    font-weight: 400 !important;
     box-shadow: none !important;
-    border-radius: 6px !important;
-    line-height: 28px !important;
+    border-radius: 4px !important;
+    line-height: 34px !important;
 }
 [data-testid="stColumn"] .stButton > button:hover {
-    background-color: #F3F4F6 !important;
-    border-color: #9CA3AF !important;
-    color: #1F2937 !important;
+    background-color: #F1F3F4 !important;
+    color: #202124 !important;
+    border: none !important;
 }
 
 /* ── Normalize filter-row widget heights ── */
