@@ -1,6 +1,4 @@
-""" styles.py — CSS design system and global JS helpers.
-Call apply_styles() once at app startup.
-"""
+""" styles.py â CSS design system and global JS helpers. Call apply_styles() once at app startup. """
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -36,7 +34,7 @@ html, body, [class*="css"] {
     opacity: 0 !important;
 }
 
-/* ── Sidebar collapse: main content fills the freed space ── */
+/* ââ Sidebar collapse: main content fills the freed space ââ */
 [data-testid="stSidebar"][aria-expanded="false"] {
     min-width: 0 !important;
     max-width: 0 !important;
@@ -97,7 +95,6 @@ html, body, [class*="css"] {
     box-sizing: border-box;
     width: 100%;
 }
-
 .kpi-value {
     font-size: clamp(14px, 1.6vw, 20px);
     font-weight: 700;
@@ -108,7 +105,6 @@ html, body, [class*="css"] {
     word-break: break-word;
     max-width: 100%;
 }
-
 .kpi-label {
     font-size: clamp(8px, 0.75vw, 10px);
     color: #9CA3AF;
@@ -127,7 +123,6 @@ html, body, [class*="css"] {
     gap: 8px;
     margin: 4px 0;
 }
-
 .funnel-bar {
     height: 24px;
     border-radius: 4px;
@@ -157,24 +152,9 @@ html, body, [class*="css"] {
     margin: 6px 0;
     font-size: 13px;
 }
-
-.alert-warning {
-    background: #FFF7ED;
-    border: 1px solid #FDBA74;
-    color: #9A3412;
-}
-
-.alert-danger {
-    background: #FEF2F2;
-    border: 1px solid #FCA5A5;
-    color: #991B1B;
-}
-
-.alert-info {
-    background: #EFF6FF;
-    border: 1px solid #93C5FD;
-    color: #1E40AF;
-}
+.alert-warning { background: #FFF7ED; border: 1px solid #FDBA74; color: #9A3412; }
+.alert-danger  { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
+.alert-info    { background: #EFF6FF; border: 1px solid #93C5FD; color: #1E40AF; }
 
 .target-progress {
     background: #f1f5f9;
@@ -182,7 +162,6 @@ html, body, [class*="css"] {
     height: 20px;
     overflow: hidden;
 }
-
 .target-bar {
     height: 100%;
     border-radius: 10px;
@@ -204,7 +183,6 @@ html, body, [class*="css"] {
     border: 1px solid #e2e8f0;
     margin: 4px 0;
 }
-
 .rank-num {
     font-size: 20px;
     font-weight: 700;
@@ -212,61 +190,108 @@ html, body, [class*="css"] {
     min-width: 30px;
 }
 
-/* ── Gmail-style icon action buttons (st-key-icon_ prefix) ──
-   JS override handles the actual styling below. This is a fallback. */
-[class*="st-key-icon_"] button {
-    background-color: transparent !important;
-    color: #5F6368 !important;
-    border: none !important;
-    box-shadow: none !important;
-    font-size: 17px !important;
-    padding: 0 6px !important;
-    height: 34px !important;
-    min-height: 34px !important;
-    border-radius: 4px !important;
-    line-height: 34px !important;
-    font-weight: 400 !important;
+/* ââ Unified deal card (Ghost Button Pattern) ââ */
+.deal-card {
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid #E8ECF0;
+    margin: 3px 0;
+    background: #FFFFFF;
+    gap: 12px;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    position: relative;
+    min-height: 56px;
 }
-[class*="st-key-icon_"] button:hover {
-    background-color: #F1F3F4 !important;
-    color: #202124 !important;
-    border: none !important;
+.deal-card:hover {
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    border-color: #C8D0D8;
+    background: #FAFBFC;
+}
+.deal-mv {
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.3;
+    color: #111827;
+}
+.deal-actions {
+    display: flex;
+    gap: 1px;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+    flex-shrink: 0;
+    margin-left: 6px;
+}
+.deal-card:hover .deal-actions {
+    opacity: 1;
+}
+.deal-action-btn {
+    background: transparent;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    width: 26px;
+    height: 26px;
+    border-radius: 5px;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #6B7280;
+    transition: background 0.1s ease, color 0.1s ease;
+    padding: 0;
+    line-height: 1;
+    font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif;
+}
+.deal-action-btn:hover {
+    background: #EEF2F7;
+    color: #374151;
+}
+.deal-action-del:hover {
+    background: #FEE2E2;
+    color: #DC2626;
 }
 
-/* ── Normalize filter-row widget heights ── */
+/* Ghost Streamlit buttons â invisible, triggered via JS */
+[class*="st-key-icon_"] {
+    height: 0 !important;
+    overflow: hidden !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 0 !important;
+}
+
+/* ââ Normalize filter-row widget heights ââ */
 [data-testid="stMultiSelect"] > div,
 [data-testid="stTextInput"] input,
 [data-testid="stDateInput"] input {
     min-height: 42px !important;
     box-sizing: border-box !important;
 }
-
 [data-testid="stMultiSelect"] [data-baseweb="select"] > div:first-child {
     min-height: 42px !important;
     align-items: center;
     border-radius: 8px !important;
     border-color: #e2e8f0 !important;
 }
-
-/* Fix: multiselect inner value-container clips placeholder text via overflow:hidden.
-   The placeholder is position:absolute inside a height:5px parent — make it visible. */
+/* Fix: multiselect inner value-container clips placeholder text via overflow:hidden. */
 [data-testid="stMultiSelect"] [data-baseweb="select"] > div > div:first-child,
 [data-testid="stMultiSelect"] [data-baseweb="select"] > div > div:first-child > div {
     overflow: visible !important;
 }
-
 [data-testid="stTextInput"] > div > div,
 [data-testid="stDateInput"] > div > div {
     border-radius: 8px !important;
     border-color: #e2e8f0 !important;
 }
 
-/* ── Responsive Streamlit columns: no wrap at any zoom ── */
+/* ââ Responsive Streamlit columns: no wrap at any zoom ââ */
 [data-testid="stHorizontalBlock"] {
     flex-wrap: nowrap !important;
     gap: 0.5rem !important;
 }
-
 [data-testid="stColumn"] {
     min-width: 0 !important;
     flex: 1 1 0 !important;
@@ -274,53 +299,36 @@ html, body, [class*="css"] {
 </style>
 """, unsafe_allow_html=True)
 
-    # Auto-select number inputs on focus + disable zero-height iframes
-    # + inject icon-button styles AFTER emotion CSS (beats !important cascade)
+    # Auto-select number inputs on focus
+    # Inject __triggerDeal on parent window so HTML card onclick buttons work
     components.html("""
 <script>
 var doc = window.parent.document;
+
 doc.addEventListener('focusin', function(e) {
     if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'number') {
         setTimeout(function() { e.target.select(); }, 50);
     }
 });
-(function disableIframes() {
-    doc.querySelectorAll('iframe').forEach(function(f) {
-        if (f.height === '0' || f.style.height === '0px' || f.getBoundingClientRect().height < 2) {
-            f.style.pointerEvents = 'none';
-        }
-    });
-})();
 
-// ── Gmail icon-button styler ──
-// Uses setProperty(...,'important') so inline !important beats emotion CSS.
-function applyIconBtnStyles() {
-    doc.querySelectorAll('[class*="st-key-icon_"] button').forEach(function(btn) {
-        btn.style.setProperty('background-color', 'transparent', 'important');
-        btn.style.setProperty('border', 'none', 'important');
-        btn.style.setProperty('box-shadow', 'none', 'important');
-        btn.style.setProperty('color', '#5F6368', 'important');
-        btn.style.setProperty('font-size', '18px', 'important');
-        btn.style.setProperty('padding', '0 4px', 'important');
-        btn.style.setProperty('height', '34px', 'important');
-        btn.style.setProperty('min-height', '34px', 'important');
-        btn.style.setProperty('border-radius', '4px', 'important');
-        btn.style.setProperty('line-height', '34px', 'important');
-        btn.style.setProperty('font-weight', '400', 'important');
-        btn.style.setProperty('cursor', 'pointer', 'important');
-        btn.onmouseenter = function() {
-            this.style.setProperty('background-color', '#F1F3F4', 'important');
-            this.style.setProperty('color', '#202124', 'important');
-        };
-        btn.onmouseleave = function() {
-            this.style.setProperty('background-color', 'transparent', 'important');
-            this.style.setProperty('color', '#5F6368', 'important');
-        };
-    });
+// ââ Ghost button bridge ââ
+// Defines window.__triggerDeal() on the Streamlit parent window.
+// HTML deal cards call this via onclick; it clicks the hidden Streamlit button.
+function registerTrigger() {
+    window.parent.__triggerDeal = function(dealId, action) {
+        var key = 'icon_' + action + '_' + dealId;
+        var container = doc.querySelector('[class*="st-key-' + key + '"]');
+        if (container) {
+            var btn = container.querySelector('button');
+            if (btn) btn.click();
+        }
+    };
 }
-applyIconBtnStyles();
+registerTrigger();
+
+// Re-register + disable zero-height iframes on every DOM mutation
 new MutationObserver(function() {
-    applyIconBtnStyles();
+    registerTrigger();
     doc.querySelectorAll('iframe').forEach(function(f) {
         if (f.height === '0' || f.style.height === '0px' || f.getBoundingClientRect().height < 2) {
             f.style.pointerEvents = 'none';
