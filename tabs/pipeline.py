@@ -162,17 +162,12 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
     <small style='color:#9CA3AF;font-size:11px;'>Lucro ({mg:.0f}%)</small>
   </div>
   <div style='flex:0.65;text-align:right;color:#9CA3AF;font-size:11px;white-space:nowrap;'>{dt_fmt}</div>
-  <div class='deal-actions'>
-    <button class='deal-action-btn' onclick="window.__triggerDeal('{deal_id}','pe')" title='Editar negócio'>&#9998;</button>
-    <button class='deal-action-btn deal-action-del' onclick="window.__triggerDeal('{deal_id}','pd')" title='Excluir negócio'>&#128465;</button>
-    <button class='deal-action-btn' onclick="window.__triggerDeal('{deal_id}','pno')" title='Adicionar nota'>&#128203;</button>
-  </div>
 </div>""", unsafe_allow_html=True)
 
-        # Ghost Streamlit buttons — invisible (height:0), triggered by JS above
-        _gc1, _gc2, _gc3, _ = st.columns([1, 1, 1, 100])
-        with _gc1:
-            if st.button("e", key=f"icon_pe_{deal_id}", help="Editar negócio"):
+        # Real action buttons — always visible, always responsive
+        _, bc1, bc2, bc3 = st.columns([7, 1, 1, 1])
+        with bc1:
+            if st.button("✏️ Editar", key=f"pe_{deal_id}", use_container_width=True):
                 current = st.session_state.get(edit_key, False)
                 st.session_state[edit_key] = not current
                 for d in pipe_deals:
@@ -181,15 +176,15 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                 st.session_state.pop(del_key, None)
                 st.session_state.pop(note_key, None)
                 st.rerun()
-        with _gc2:
-            if st.button("d", key=f"icon_pd_{deal_id}", help="Excluir negócio"):
+        with bc2:
+            if st.button("🗑 Excluir", key=f"pd_{deal_id}", use_container_width=True):
                 current = st.session_state.get(del_key, False)
                 st.session_state[del_key] = not current
                 st.session_state.pop(edit_key, None)
                 st.session_state.pop(note_key, None)
                 st.rerun()
-        with _gc3:
-            if st.button("n", key=f"icon_pno_{deal_id}", help="Adicionar nota"):
+        with bc3:
+            if st.button("📋 Notas", key=f"pno_{deal_id}", use_container_width=True):
                 current = st.session_state.get(note_key, False)
                 st.session_state[note_key] = not current
                 st.session_state.pop(edit_key, None)
