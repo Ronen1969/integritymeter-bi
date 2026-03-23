@@ -132,12 +132,11 @@ def render_calculator(all_deals: list, sidebar_cfg: dict) -> None:
 
         st.markdown("<br>", unsafe_allow_html=True)
         save_label = "ATUALIZAR NEGÓCIO" if is_editing else "CRIAR NEGÓCIO"
-        c1 = st.columns(2)[0] if is_editing else st.container()
-        c2 = st.columns(2)[1] if is_editing else None
-
-        # Re-fetch columns if editing (st.columns above already consumed)
         if is_editing:
             c1, c2 = st.columns(2)
+        else:
+            c1 = st.container()
+            c2 = None
 
         if c1.button(save_label, use_container_width=True):
             if not client_name.strip():
