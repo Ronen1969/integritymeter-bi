@@ -7,6 +7,7 @@ import os
 import streamlit as st
 
 from auth import logout
+from data import get_setting, save_setting
 from fx import get_live_fx
 
 
@@ -17,29 +18,21 @@ def render_sidebar() -> dict:
     Returns:
         dict with keys: default_cost_usd, tax_p, adm_p, total_tax_pct
     """
-    # Collapsible sidebar toggle button (pure HTML/CSS, no iframes)
-    st.markdown("""
-<div id="im-sidebar-toggle" onclick="(function(){
-    var sb = document.querySelector('[data-testid=\\'stSidebar\\']');
-    var ctrl = document.querySelector('[data-testid=\\'stSidebarCollapsedControl\\']');
-    var btn = document.getElementById('im-sidebar-toggle');
-    if (sb && sb.style.display !== 'none') {
-        sb.style.display = 'none';
-        if(ctrl) ctrl.style.display = 'none';
-        btn.textContent = '▖';
-    } else if (sb) {
-        sb.style.display = '';
-        if(ctrl) ctrl.style.display = '';
-        btn.textContent = '◀';
-    }
-})()" style="position:fixed;top:68px;left:5px;z-index:999999;background:#f1f5f9;
-border:1px solid #e2e8f0;border-radius:8px;width:32px;height:32px;cursor:pointer;
-display:flex;align-items:center;justify-content:center;font-size:16px;color:#6B7280;
-box-shadow:0 1px 3px rgba(0,0,0,0.1);user-select:none;" title="Ocultar/mostrar barra lateral">◀</div>
-""", unsafe_allow_html=True)
+    # ── Load persisted settings once per session ──────────────────────────────
+    if '_sidebar_settings_loaded' not in st.session_state:
+        st.session_state['default_cost_usd']      = float(get_setting('default_cost_usd', '4.00'))
+        st.session_state['tax_presumido']          = float(get_setting('tax_presumido', '16.33'))
+        st.session_state['tax_admin']              = float(get_setting('tax_admin', '2.50'))
+        st.session_state['_saved_default_cost_usd'] = st.session_state['default_cost_usd']
+        st.session_state['_saved_tax_presumido']   = st.session_state['tax_presumido']
+        st.session_state['_saved_tax_admin']       = st.session_state['tax_admin']
+        st.session_state['_sidebar_settings_loaded'] = True
 
     with st.sidebar:
-        logo_path = os.path.expanduser("~/Desktop/integrity-meter-logo.png")
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'logo.png')
+        if not os.path.exists(logo_path):
+            # fallback: try Desktop path for local development
+            logo_path = os.path.expanduser("~/Desktop/integrity-meter-logo.png")
         if os.path.exists(logo_path):
             st.image(logo_path)
 
@@ -100,20 +93,31 @@ box-shadow:0 1px 3px rgba(0,0,0,0.1);user-select:none;" title="Ocultar/mostrar b
         st.caption("CONFIGURAÇÕES")
 
         default_cost_usd = st.number_input(
-            "Custo Padrão USD", value=4.00, min_value=0.0, step=0.5, format="%.2f",
+            "Custo Padrão USD", min_value=0.0, step=0.5, format="%.2f",
             key="default_cost_usd",
             help="Custo unitário padrão em USD — pré-preenchido nos novos negócios",
         )
         tax_p = st.number_input(
-            "Lucro Presumido (%)", value=16.33, min_value=0.0, step=0.5, format="%.2f",
+            "Lucro Presumido (%)", min_value=0.0, step=0.5, format="%.2f",
             key="tax_presumido",
         )
         adm_p = st.number_input(
-            "Taxa Administração (%)", value=2.50, min_value=0.0, step=0.5, format="%.2f",
+            "Taxa Administração (%)", min_value=0.0, step=0.5, format="%.2f",
             key="tax_admin",
         )
         total_tax_pct = tax_p + adm_p
         st.caption(f"Impostos: **{total_tax_pct:.2f}%**")
+
+        # Persist any changes to the database
+        if default_cost_usd != st.session_state.get('_saved_default_cost_usd'):
+            save_setting('default_cost_usd', default_cost_usd)
+            st.session_state['_saved_default_cost_usd'] = default_cost_usd
+        if tax_p != st.session_state.get('_saved_tax_presumido'):
+            save_setting('tax_presumido', tax_p)
+            st.session_state['_saved_tax_presumido'] = tax_p
+        if adm_p != st.session_state.get('_saved_tax_admin'):
+            save_setting('tax_admin', adm_p)
+            st.session_state['_saved_tax_admin'] = adm_p
 
     return {
         'default_cost_usd': default_cost_usd,
