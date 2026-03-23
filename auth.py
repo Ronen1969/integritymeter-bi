@@ -91,7 +91,7 @@ def send_welcome_email(to_email: str, user_name: str, temp_password: str, app_ur
             f'<a href="{app_url}" style="background-color:#8DAE10;color:#ffffff;'
             f'padding:12px 30px;border-radius:8px;text-decoration:none;'
             f'font-weight:600;font-size:16px;display:inline-block;">Acessar a Plataforma</a></p>'
-            if app_url else ''
+           if app_url else ''
         )
         html_body = f"""
 <html><body style="font-family:'Inter',Arial,sans-serif;background:#f8fafc;padding:20px;">
@@ -158,127 +158,92 @@ def send_welcome_email(to_email: str, user_name: str, temp_password: str, app_ur
 
 # ── Login screen ───────────────────────────────────────────────────────────────
 def render_login() -> None:
-    """Render a full two-panel login screen."""
+    """Render a clean two-panel login screen."""
+    import base64
+
+    # Load logo as base64 — avoids the 'streamlitApp' tooltip shown by st.image()
+    logo_b64 = ""
+    for path in [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), 'integrity-meter-logo.png'),
+        "/mount/src/integritymeter-bi/integrity-meter-logo.png",
+        os.path.expanduser("~/Desktop/integrity-meter-logo.png"),
+    ]:
+        if os.path.exists(path):
+            try:
+                with open(path, 'rb') as _f:
+                    logo_b64 = base64.b64encode(_f.read()).decode()
+                break
+            except Exception:
+                pass
+
+    logo_tag = (
+        f'<img src="data:image/png;base64,{logo_b64}" '
+        'style="width:58px;height:58px;object-fit:contain;margin-bottom:18px;" alt="">'
+        if logo_b64 else
+        '<div style="width:52px;height:52px;background:rgba(255,255,255,0.25);'
+        'border-radius:10px;margin-bottom:18px;display:flex;align-items:center;'
+        'justify-content:center;color:white;font-weight:700;font-size:18px;">IM</div>'
+    )
 
     st.markdown("""
 <style>
-/* Remove Streamlit default padding on login page */
-[data-testid="stAppViewContainer"] > .main > div:first-child {
-    padding-top: 2rem !important;
-}
+[data-testid="stAppViewContainer"] > .main > div:first-child { padding-top: 2rem !important; }
 [data-testid="stSidebar"] { display: none !important; }
-
-/* Brand panel */
 .login-brand {
-    background: linear-gradient(155deg, #8DAE10 0%, #5a7a00 100%);
-    border-radius: 20px;
-    padding: 52px 44px;
-    min-height: 520px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    color: white;
-}
-.login-brand h1 {
-    color: white;
-    font-size: 30px;
-    font-weight: 700;
-    margin: 0 0 6px 0;
-    line-height: 1.2;
-}
-.login-brand .tagline {
-    color: rgba(255,255,255,0.88);
-    font-size: 15px;
-    margin: 0 0 36px 0;
-    line-height: 1.5;
+    background: linear-gradient(155deg, #5f7d0c 0%, #8DAE10 65%, #a3c412 100%);
+    border-radius: 16px; padding: 44px 36px; min-height: 500px;
+    display: flex; flex-direction: column; justify-content: space-between; color: white;
 }
 .login-feature {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    margin: 14px 0;
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-bottom: 13px; font-size: 13px;
+    color: rgba(255,255,255,0.88); line-height: 1.45;
 }
-.login-feature-icon {
-    font-size: 18px;
-    flex-shrink: 0;
-    margin-top: 1px;
-}
-.login-feature-text {
-    color: rgba(255,255,255,0.9);
-    font-size: 14px;
-    line-height: 1.4;
+.login-check {
+    background: rgba(255,255,255,0.2); border-radius: 4px;
+    padding: 1px 6px; font-size: 11px; font-weight: 700;
+    flex-shrink: 0; margin-top: 2px;
 }
 .login-footer {
-    margin-top: 44px;
-    padding-top: 20px;
-    border-top: 1px solid rgba(255,255,255,0.25);
-    color: rgba(255,255,255,0.6);
-    font-size: 12px;
+    margin-top: 20px; padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.45); font-size: 11px;
 }
-
-/* Form panel spacing */
-.login-form-wrap {
-    padding: 12px 8px;
-}
-.login-form-wrap h2 {
-    font-size: 26px;
-    font-weight: 700;
-    color: #111827;
-    margin-bottom: 4px;
-}
-.login-form-wrap .subtitle {
-    color: #6B7280;
-    font-size: 14px;
-    margin-bottom: 28px;
-}
+.login-form-wrap h2 { font-size: 26px; font-weight: 700; color: #111827; margin-bottom: 4px; }
+.login-form-wrap .subtitle { color: #6B7280; font-size: 14px; margin-bottom: 22px; }
 </style>
 """, unsafe_allow_html=True)
 
-    left, right = st.columns([1, 1], gap="large")
+    left, right = st.columns([1, 1.1], gap="large")
 
     # ── Left: branding panel ──────────────────────────────────────────────────
     with left:
-        st.markdown("""
+        st.markdown(f"""
 <div class='login-brand'>
-  <div style='font-size:48px;margin-bottom:20px;'>📊</div>
-  <h1>IntegrityMeter BI</h1>
-  <p class='tagline'>Plataforma de Gestão de Margem<br>e Pipeline de Vendas</p>
-
-  <div class='login-feature'>
-    <span class='login-feature-icon'>✅</span>
-    <span class='login-feature-text'>Calcule margens em tempo real com câmbio atualizado</span>
+  <div>
+    {logo_tag}
+    <h2 style='font-size:22px;font-weight:700;margin:0 0 6px;color:white;'>IntegrityMeter BI</h2>
+    <p style='font-size:13px;color:rgba(255,255,255,0.72);margin:0 0 26px;line-height:1.55;'>
+      Plataforma de Gestão de Margem<br>e Pipeline de Vendas
+    </p>
+    <div class='login-feature'><span class='login-check'>&#10003;</span>Calcule margens em tempo real com câmbio atualizado</div>
+    <div class='login-feature'><span class='login-check'>&#10003;</span>Acompanhe seu pipeline de vendas por status</div>
+    <div class='login-feature'><span class='login-check'>&#10003;</span>Taxa de câmbio USD/BRL em tempo real</div>
+    <div class='login-feature'><span class='login-check'>&#10003;</span>Alertas inteligentes e metas mensais</div>
+    <div class='login-feature'><span class='login-check'>&#10003;</span>Relatórios e histórico de negócios</div>
   </div>
-  <div class='login-feature'>
-    <span class='login-feature-icon'>📈</span>
-    <span class='login-feature-text'>Acompanhe seu pipeline de vendas por status</span>
-  </div>
-  <div class='login-feature'>
-    <span class='login-feature-icon'>💵</span>
-    <span class='login-feature-text'>Taxa de câmbio USD/BRL em tempo real</span>
-  </div>
-  <div class='login-feature'>
-    <span class='login-feature-icon'>🎯</span>
-    <span class='login-feature-text'>Alertas inteligentes e metas mensais</span>
-  </div>
-  <div class='login-feature'>
-    <span class='login-feature-icon'>📋</span>
-    <span class='login-feature-text'>Relatórios e histórico de negócios</span>
-  </div>
-
-  <div class='login-footer'>
-    Acesso restrito a funcionários da IntegrityMeter
-  </div>
+  <div class='login-footer'>Acesso restrito a funcionários da IntegrityMeter</div>
 </div>
 """, unsafe_allow_html=True)
 
     # ── Right: form ───────────────────────────────────────────────────────────
     with right:
-        st.markdown("<div class='login-form-wrap'>", unsafe_allow_html=True)
-        st.markdown("<h2>Entrar na sua conta</h2>", unsafe_allow_html=True)
-        st.markdown(
-            "<p class='subtitle'>Bem-vindo de volta! Insira suas credenciais abaixo.</p>",
-            unsafe_allow_html=True,
-        )
+        st.markdown("""
+<div class='login-form-wrap'>
+  <h2>Entrar na sua conta</h2>
+  <p class='subtitle'>Bem-vindo de volta! Insira suas credenciais abaixo.</p>
+</div>
+""", unsafe_allow_html=True)
 
         email = st.text_input("E-mail", placeholder="seu@email.com")
         password = st.text_input("Senha", type="password", placeholder="Sua senha")
