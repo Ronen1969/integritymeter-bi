@@ -59,15 +59,39 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color:
     border: 1px solid #BBF7D0; color: #166534; font-weight: 500; margin-bottom: 8px;
 }
 .kpi-card {
-    padding: 16px; border-radius: 12px;
+    padding: 10px 8px;
+    border-radius: 12px;
     background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-    border: 1px solid #e2e8f0; text-align: center;
-    min-height: 96px;
+    border: 1px solid #e2e8f0;
+    text-align: center;
+    height: 90px;
     display: flex; flex-direction: column;
     justify-content: center; align-items: center;
+    overflow: hidden;
+    box-sizing: border-box;
+    width: 100%;
 }
-.kpi-value  { font-size: 22px; font-weight: 700; color: #8DAE10; margin: 4px 0; white-space: nowrap; }
-.kpi-label  { font-size: 10px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.3; }
+.kpi-value {
+    font-size: clamp(14px, 1.6vw, 20px);
+    font-weight: 700;
+    color: #8DAE10;
+    margin: 2px 0;
+    line-height: 1.2;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 100%;
+}
+.kpi-label {
+    font-size: clamp(8px, 0.75vw, 10px);
+    color: #9CA3AF;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    max-width: 100%;
+    margin-bottom: 2px;
+}
 .funnel-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
 .funnel-bar {
     height: 24px; border-radius: 4px; background: #8DAE10;
@@ -96,6 +120,33 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color:
 .rank-num { font-size: 20px; font-weight: 700; color: #8DAE10; min-width: 30px; }
 .stColumn:has(> div > div > .stButton) .stButton > button {
     min-height: 36px !important; padding: 4px 8px !important;
+}
+/* ── Normalize filter-row widget heights ── */
+[data-testid="stMultiSelect"] > div,
+[data-testid="stTextInput"] input,
+[data-testid="stDateInput"] input {
+    min-height: 42px !important;
+    box-sizing: border-box !important;
+}
+[data-testid="stMultiSelect"] [data-baseweb="select"] > div:first-child {
+    min-height: 42px !important;
+    align-items: center !important;
+    border-radius: 8px !important;
+    border-color: #e2e8f0 !important;
+}
+[data-testid="stTextInput"] > div > div,
+[data-testid="stDateInput"] > div > div {
+    border-radius: 8px !important;
+    border-color: #e2e8f0 !important;
+}
+/* ── Responsive Streamlit columns: no wrap at any zoom ── */
+[data-testid="stHorizontalBlock"] {
+    flex-wrap: nowrap !important;
+    gap: 0.5rem !important;
+}
+[data-testid="stColumn"] {
+    min-width: 0 !important;
+    flex: 1 1 0 !important;
 }
 </style>
 """, unsafe_allow_html=True)
