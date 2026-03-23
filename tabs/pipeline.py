@@ -1,5 +1,5 @@
 """ tabs/pipeline.py — Tab 2: Pipeline de Vendas. """
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 
 import pandas as pd
 import streamlit as st
@@ -72,23 +72,15 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
     wr = (tw / (tw + tl) * 100) if (tw + tl) > 0 else 0
     tp = df[~df['status'].isin(['concluido', 'perdido'])]['v_real'].sum()
 
-    # ── KPIs ─────────────────────────────────────────────────────────────────
-    k1, k2, k3, k4, k5 = st.columns(5)
-    for col, lbl, val in [
-        (k1, "Pipeline Ativo",   f"R$ {tp:,.0f}"),
-        (k2, "Negócios Ativos",  str(ta)),
-        (k3, "Taxa Conversão",   f"{wr:.0f}%"),
-        (k4, "Ganhos/Perdidos",  f"{tw}/{tl}"),
-        (k5, "Total Filtrado",   str(len(df))),
-    ]:
-        col.markdown(
-            f"<div class='kpi-card'><div class='kpi-label'>{lbl}</div>"
-            f"<div class='kpi-value'>{val}</div></div>",
-            unsafe_allow_html=True,
-        )
+    # ── Single-line summary (replaces duplicate KPI cards) ───────────────────
+    st.caption(
+        f"Pipeline Ativo: R$ {tp:,.0f}  ·  {ta} ativos  ·  "
+        f"Conversão: {wr:.0f}%  ·  {tw} ganhos  ·  {tl} perdidos  ·  "
+        f"{len(df)} total filtrado"
+    )
 
     # ── Funnel ───────────────────────────────────────────────────────────────
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
     st.subheader("Funil de Conversão")
     sc = df.groupby('status').size().to_dict()
     mx = max(sc.values()) if sc else 1
@@ -110,9 +102,9 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
         )
 
     # ── Deal list ────────────────────────────────────────────────────────────
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
     st.subheader("Todos os Negócios")
-    pipe_ids = set(df['id'].tolist())
+    pipe_ids  = set(df['id'].tolist())
     pipe_deals = [d for d in all_deals if d['id'] in pipe_ids]
 
     for pd_deal in pipe_deals:
@@ -131,15 +123,26 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
         except (ValueError, TypeError):
             dt_fmt = pd_deal.get('created_at', '')[:10]
 
-        mg_color  = "#059669" if mg >= 30 else "#D97706" if mg >= 10 else "#DC2626"
-        edit_key  = f"pipe_editing_{deal_id}"
-        del_key   = f"pipe_deleting_{deal_id}"
-        note_key  = f"pipe_noting_{deal_id}"
+        # Deal age → left-border color
+        try:
+            created_utc = datetime.fromisoformat(
+                pd_deal['created_at'].replace('Z', '+00:00')
+            )
+            age_days = (datetime.now(created_utc.tzinfo) - created_utc).days
+        except (ValueError, TypeError, AttributeError):
+            age_days = 0
+        age_border_color = (
+            "#059669" if age_days < 7
+            else "#D97706" if age_days < 14
+            else "#DC2626"
+        )
 
-        # ── Unified card — Ghost Button Pattern ──────────────────────────────
-        # Visual action buttons are HTML; they call window.__triggerDeal()
-        # which clicks the invisible Streamlit ghost buttons below.
-        st.markdown(f"""<div class='deal-card'>
+        mg_color = "#059669" if mg >= 30 else "#D97706" if mg >= 10 else "#DC2626"
+        edit_key = f"pipe_editing_{deal_id}"
+        del_key  = f"pipe_deleting_{deal_id}"
+        note_key = f"pipe_noting_{deal_id}"
+
+        st.markdown(f"""<div class='deal-card' style='border-left:3px solid {age_border_color};'>
   <div style='flex:0 0 10px;margin-right:2px;'>{status_dot(sk)}</div>
   <div style='flex:2;min-width:100px;'>
     <div style='font-weight:600;font-size:14px;line-height:1.3;'>{cn}</div>
@@ -206,12 +209,12 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                 edit_notes = en2.text_input("Observações",   value=_notes,  key=f"eno_{deal_id}")
 
                 ef1, ef2, ef3 = st.columns(3)
-                edit_qty  = ef1.number_input("Qtd. Testes",    value=int(pd_deal['qty']),        min_value=0,   step=1,   key=f"eq_{deal_id}")
-                edit_cost = ef2.number_input("Custo Unitário (USD)",     value=float(pd_deal['cost_usd']), min_value=0.0, step=0.5, format="%.2f", key=f"ec_{deal_id}")
-                edit_unit = ef3.number_input("Preço Unitário (R$)", value=up,                        min_value=0.0, step=5.0, format="%.2f", key=f"eu_{deal_id}")
+                edit_qty  = ef1.number_input("Qtd. Testes",          value=int(pd_deal['qty']),        min_value=0,   step=1,   key=f"eq_{deal_id}")
+                edit_cost = ef2.number_input("Custo Unitário (USD)", value=float(pd_deal['cost_usd']), min_value=0.0, step=0.5, format="%.2f", key=f"ec_{deal_id}")
+                edit_unit = ef3.number_input("Preço Unitário (R$)",  value=up,                         min_value=0.0, step=5.0, format="%.2f", key=f"eu_{deal_id}")
 
                 ef4, ef5, ef6 = st.columns(3)
-                auto_total = round(edit_unit * edit_qty, 2) if (edit_unit > 0 and edit_qty > 0) else float(pd_deal['v_real'])
+                auto_total  = round(edit_unit * edit_qty, 2) if (edit_unit > 0 and edit_qty > 0) else float(pd_deal['v_real'])
                 edit_vreal  = ef4.number_input("Total R$",  value=auto_total, min_value=0.0, step=100.0, format="%.2f", key=f"ev_{deal_id}")
                 _mig_sk     = _migrate_status(sk)
                 edit_status = ef5.selectbox(
@@ -228,13 +231,13 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                 sf1, sf2 = st.columns(2)
                 if sf1.form_submit_button("Salvar", use_container_width=True):
                     try:
-                        edit_sk = status_label_to_key(edit_status)
-                        fx = st.session_state.dolar_live
-                        new_cost_brl  = edit_qty * edit_cost * fx
-                        new_impostos  = edit_vreal * total_tax_pct / 100
-                        new_profit    = edit_vreal - new_cost_brl - new_impostos
-                        new_margin    = (new_profit / edit_vreal * 100) if edit_vreal > 0 else 0
-                        update_data   = {
+                        edit_sk      = status_label_to_key(edit_status)
+                        fx           = st.session_state.dolar_live
+                        new_cost_brl = edit_qty * edit_cost * fx
+                        new_impostos = edit_vreal * total_tax_pct / 100
+                        new_profit   = edit_vreal - new_cost_brl - new_impostos
+                        new_margin   = (new_profit / edit_vreal * 100) if edit_vreal > 0 else 0
+                        update_data  = {
                             'qty':           edit_qty,
                             'cost_usd':      float(edit_cost),
                             'v_real':        float(edit_vreal),
