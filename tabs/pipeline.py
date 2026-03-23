@@ -116,13 +116,13 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
     pipe_deals = [d for d in all_deals if d['id'] in pipe_ids]
 
     for pd_deal in pipe_deals:
-        cn   = (pd_deal.get('clients', {}) or {}).get('name', '?')
-        sk   = pd_deal['status']
-        vr   = float(pd_deal['v_real'])
-        pr   = float(pd_deal['profit'])
-        mg   = float(pd_deal['margin'])
-        qt   = int(pd_deal['qty'])
-        up   = round(vr / qt, 2) if qt > 0 else vr
+        cn      = (pd_deal.get('clients', {}) or {}).get('name', '?')
+        sk      = pd_deal['status']
+        vr      = float(pd_deal['v_real'])
+        pr      = float(pd_deal['profit'])
+        mg      = float(pd_deal['margin'])
+        qt      = int(pd_deal['qty'])
+        up      = round(vr / qt, 2) if qt > 0 else vr
         deal_id = pd_deal['id']
 
         try:
@@ -131,47 +131,61 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
         except (ValueError, TypeError):
             dt_fmt = pd_deal.get('created_at', '')[:10]
 
-        mg_color = "#059669" if mg >= 30 else "#D97706" if mg >= 10 else "#DC2626"
-        edit_key = f"pipe_editing_{deal_id}"
-        del_key  = f"pipe_deleting_{deal_id}"
+        mg_color  = "#059669" if mg >= 30 else "#D97706" if mg >= 10 else "#DC2626"
+        edit_key  = f"pipe_editing_{deal_id}"
+        del_key   = f"pipe_deleting_{deal_id}"
+        note_key  = f"pipe_noting_{deal_id}"
 
-        st.markdown(f"""
-        <div style='display:flex;align-items:center;padding:10px 16px;border-radius:10px;
-             border:1px solid #e2e8f0;margin:4px 0;background:#fafafa;gap:12px;'>
-          <div style='flex:0 0 10px;'>{status_dot(sk)}</div>
-          <div style='flex:2;'><strong>{cn}</strong><br>
-            <small style='color:#9CA3AF;'>{status_key_to_label(sk)}</small></div>
-          <div style='flex:0.6;text-align:center;'>
-            <div style='font-weight:600;font-size:13px;'>{qt}</div>
-            <small style='color:#9CA3AF;'>Testes</small></div>
-          <div style='flex:1;text-align:right;'>
-            <div style='font-weight:600;font-size:13px;'>R$ {up:,.2f}</div>
-            <small style='color:#9CA3AF;'>Preço Unit.</small></div>
-          <div style='flex:1;text-align:right;'>
-            <div style='font-weight:600;'>R$ {vr:,.0f}</div>
-            <small style='color:#9CA3AF;'>Total</small></div>
-          <div style='flex:1;text-align:right;'>
-            <div style='font-weight:600;color:{mg_color};'>R$ {pr:,.0f}</div>
-            <small style='color:#9CA3AF;'>Lucro ({mg:.0f}%)</small></div>
-          <div style='flex:0.7;text-align:right;color:#9CA3AF;font-size:12px;'>{dt_fmt}</div>
-        </div>""", unsafe_allow_html=True)
+        # ── Gmail-style row: deal info | ✏ | 🗑 | 📝 ─────────────────────────
+        info_col, c_edit, c_del, c_note = st.columns([9, 1, 1, 1])
 
-        # Small symmetric action buttons — styled via global column CSS in styles.py
-        ac1, ac2, _ = st.columns([1, 1, 6])
-        with ac1:
-            if st.button("✏ Editar", key=f"pe_{deal_id}"):
+        with info_col:
+            st.markdown(f"""
+            <div style='display:flex;align-items:center;padding:10px 16px;border-radius:10px;
+                 border:1px solid #e2e8f0;margin:4px 0;background:#fafafa;gap:12px;'>
+              <div style='flex:0 0 10px;'>{status_dot(sk)}</div>
+              <div style='flex:2;'><strong>{cn}</strong><br>
+                <small style='color:#9CA3AF;'>{status_key_to_label(sk)}</small></div>
+              <div style='flex:0.6;text-align:center;'>
+                <div style='font-weight:600;font-size:13px;'>{qt}</div>
+                <small style='color:#9CA3AF;'>Testes</small></div>
+              <div style='flex:1;text-align:right;'>
+                <div style='font-weight:600;font-size:13px;'>R$ {up:,.2f}</div>
+                <small style='color:#9CA3AF;'>Preço Unit.</small></div>
+              <div style='flex:1;text-align:right;'>
+                <div style='font-weight:600;'>R$ {vr:,.0f}</div>
+                <small style='color:#9CA3AF;'>Total</small></div>
+              <div style='flex:1;text-align:right;'>
+                <div style='font-weight:600;color:{mg_color};'>R$ {pr:,.0f}</div>
+                <small style='color:#9CA3AF;'>Lucro ({mg:.0f}%)</small></div>
+              <div style='flex:0.7;text-align:right;color:#9CA3AF;font-size:12px;'>{dt_fmt}</div>
+            </div>""", unsafe_allow_html=True)
+
+        with c_edit:
+            if st.button("✏", key=f"pe_{deal_id}", help="Editar negócio"):
                 current = st.session_state.get(edit_key, False)
                 st.session_state[edit_key] = not current
                 for d in pipe_deals:
                     if d['id'] != deal_id:
                         st.session_state.pop(f"pipe_editing_{d['id']}", None)
                 st.session_state.pop(del_key, None)
+                st.session_state.pop(note_key, None)
                 st.rerun()
-        with ac2:
-            if st.button("🗑 Excluir", key=f"pd_{deal_id}"):
+
+        with c_del:
+            if st.button("🗑", key=f"pd_{deal_id}", help="Excluir negócio"):
                 current = st.session_state.get(del_key, False)
                 st.session_state[del_key] = not current
                 st.session_state.pop(edit_key, None)
+                st.session_state.pop(note_key, None)
+                st.rerun()
+
+        with c_note:
+            if st.button("📝", key=f"pno_{deal_id}", help="Adicionar nota"):
+                current = st.session_state.get(note_key, False)
+                st.session_state[note_key] = not current
+                st.session_state.pop(edit_key, None)
+                st.session_state.pop(del_key, None)
                 st.rerun()
 
         # ── Inline edit form ───────────────────────────────────────────────────
@@ -280,3 +294,37 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
             if dc2.button("Cancelar", key=f"pn_{deal_id}"):
                 st.session_state[del_key] = False
                 st.rerun()
+
+        # ── Quick note panel ───────────────────────────────────────────────────
+        if st.session_state.get(note_key, False):
+            _notes = (pd_deal.get('clients', {}) or {}).get('notes', '') or ''
+            st.markdown(
+                "<div style='padding:4px 0 8px 0;border-left:3px solid #8DAE10;"
+                "padding-left:16px;margin:4px 0;'>",
+                unsafe_allow_html=True,
+            )
+            st.markdown(f"**Nota — {cn}**")
+            with st.form(f"note_form_{deal_id}"):
+                new_notes = st.text_area(
+                    "Observações", value=_notes,
+                    key=f"nt_{deal_id}", height=80,
+                    placeholder="Adicione observações sobre este negócio ou cliente...",
+                )
+                nf1, nf2 = st.columns(2)
+                if nf1.form_submit_button("Salvar nota", use_container_width=True):
+                    try:
+                        old_cid = pd_deal.get('client_id')
+                        if old_cid:
+                            sb.table('clients').update({'notes': new_notes.strip()}) \
+                                .eq('id', old_cid).execute()
+                            st.toast(f"Nota de '{cn}' salva!")
+                        else:
+                            st.warning("Cliente não encontrado para salvar a nota.")
+                        st.session_state[note_key] = False
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro: {e}")
+                if nf2.form_submit_button("Cancelar", use_container_width=True):
+                    st.session_state[note_key] = False
+                    st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
