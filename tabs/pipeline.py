@@ -38,7 +38,7 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
         placeholder="Selecione o status...",
         key="pipe_filter_status",
     )
-    filter_client = fc2.text_input("Buscar Cliente", key="pipe_filter_client")
+    filter_client = fc2.text_input("Buscar por Cliente", key="pipe_filter_client")
     filter_date = fc3.date_input(
         "A partir de",
         value=date.today() - timedelta(days=90),
@@ -147,7 +147,7 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
   </div>
   <div style='flex:0.55;text-align:center;'>
     <div class='deal-mv'>{qt}</div>
-    <small style='color:#9CA3AF;font-size:11px;'>Testes</small>
+    <small style='color:#9CA3AF;font-size:11px;'>Qtd.</small>
   </div>
   <div style='flex:1;text-align:right;'>
     <div class='deal-mv'>R$ {up:,.2f}</div>
@@ -207,13 +207,13 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
             _notes = (pd_deal.get('clients', {}) or {}).get('notes', '') or ''
             with st.form(f"edit_form_{deal_id}"):
                 en1, en2 = st.columns([1, 2])
-                edit_cn    = en1.text_input("Cliente",       value=cn,      key=f"ecn_{deal_id}")
+                edit_cn    = en1.text_input("Cliente",       value=cn,       key=f"ecn_{deal_id}")
                 edit_notes = en2.text_input("ObservaÃ§Ãµes",   value=_notes,  key=f"eno_{deal_id}")
 
                 ef1, ef2, ef3 = st.columns(3)
-                edit_qty  = ef1.number_input("Qtd Testes",    value=int(pd_deal['qty']),        min_value=0,   step=1,   key=f"eq_{deal_id}")
-                edit_cost = ef2.number_input("Custo USD",     value=float(pd_deal['cost_usd']), min_value=0.0, step=0.5, format="%.2f", key=f"ec_{deal_id}")
-                edit_unit = ef3.number_input("PreÃ§o Unit. R$", value=up,                        min_value=0.0, step=5.0, format="%.2f", key=f"eu_{deal_id}")
+                edit_qty  = ef1.number_input("Qtd. Testes",    value=int(pd_deal['qty']),        min_value=0,   step=1,   key=f"eq_{deal_id}")
+                edit_cost = ef2.number_input("Custo UnitÃ¡rio (USD)",     value=float(pd_deal['cost_usd']), min_value=0.0, step=0.5, format="%.2f", key=f"ec_{deal_id}")
+                edit_unit = ef3.number_input("PreÃ§o UnitÃ¡rio (R$)", value=up,                        min_value=0.0, step=5.0, format="%.2f", key=f"eu_{deal_id}")
 
                 ef4, ef5, ef6 = st.columns(3)
                 auto_total = round(edit_unit * edit_qty, 2) if (edit_unit > 0 and edit_qty > 0) else float(pd_deal['v_real'])
@@ -240,6 +240,7 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                         new_profit    = edit_vreal - new_cost_brl - new_impostos
                         new_margin    = (new_profit / edit_vreal * 100) if edit_vreal > 0 else 0
                         update_data   = {
+                            'status':        edit_sk,
                             'qty':           edit_qty,
                             'cost_usd':      float(edit_cost),
                             'v_real':        float(edit_vreal),
@@ -249,7 +250,6 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                             'tax_adm':       adm_p,
                             'profit':        round(new_profit, 2),
                             'margin':        round(new_margin, 1),
-                            'status':        edit_sk,
                             'closed_at':     datetime.now().isoformat() if edit_sk == 'concluido' else None,
                         }
                         if sk != edit_sk:
@@ -274,7 +274,7 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                         sb.table('deals').update(update_data).eq('id', deal_id).execute()
                         invalidate_deals_cache()
                         st.session_state[edit_key] = False
-                        st.toast(f"'{edit_cn.strip()}' atualizado!")
+                        st.toast(f"NegÃ³cio '{edit_cn.strip()}' atualizado com sucesso!")
                         st.rerun()
                     except Exception as e:
                         st.error(f"Erro: {e}")
@@ -294,7 +294,7 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                     invalidate_deals_cache()
                     if st.session_state.selected_deal_id == deal_id:
                         clear_form()
-                    st.toast(f"'{cn}' excluÃ­do!")
+                    st.toast(f"NegÃ³cio '{cn}' excluÃ­do com sucesso!")
                     st.session_state[del_key] = False
                     st.rerun()
                 except Exception as e:
@@ -325,7 +325,7 @@ def render_pipeline(all_deals: list, sidebar_cfg: dict) -> None:
                         if old_cid:
                             sb.table('clients').update({'notes': new_notes.strip()}) \
                                 .eq('id', old_cid).execute()
-                            st.toast(f"Nota de '{cn}' salva!")
+                            st.toast(f"ObservaÃ§Ã£o de '{cn}' salva com sucesso!")
                         else:
                             st.warning("Cliente nÃ£o encontrado para salvar a nota.")
                         st.session_state[note_key] = False
