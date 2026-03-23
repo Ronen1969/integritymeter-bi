@@ -15,8 +15,7 @@ def render_dashboard(all_deals: list, sidebar_cfg: dict) -> None:
 
     if not all_deals:
         st.info(
-            "Bem-vindo! Comece adicionando seu primeiro negócio na aba "
-            "'Novo Negócio' ou clique '+ Novo Negócio' na barra lateral."
+            "Bem-vindo! Comece adicionando seu primeiro negócio na aba 'Novo Negócio' acima."
         )
         return
 
