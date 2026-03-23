@@ -1,4 +1,4 @@
-""" styles.py â CSS design system and global JS helpers. Call apply_styles() once at app startup. """
+""" styles.py — CSS design system and global JS helpers. Call apply_styles() once at app startup. """
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -34,7 +34,7 @@ html, body, [class*="css"] {
     opacity: 0 !important;
 }
 
-/* ââ Sidebar collapse: main content fills the freed space ââ */
+/* ── Sidebar collapse: main content fills the freed space ── */
 [data-testid="stSidebar"][aria-expanded="false"] {
     min-width: 0 !important;
     max-width: 0 !important;
@@ -190,7 +190,7 @@ html, body, [class*="css"] {
     min-width: 30px;
 }
 
-/* ââ Unified deal card (Ghost Button Pattern) ââ */
+/* ── Unified deal card (Ghost Button Pattern) ── */
 .deal-card {
     display: flex;
     align-items: center;
@@ -218,7 +218,7 @@ html, body, [class*="css"] {
     white-space: nowrap;
 }
 
-/* ââ Action buttons â always visible ââ */
+/* ── Action buttons — always visible ── */
 .deal-actions {
     display: flex;
     gap: 3px;
@@ -248,7 +248,7 @@ html, body, [class*="css"] {
 .deal-action-btn:hover { background: #E5E7EB; color: #374151; }
 .deal-action-del:hover { background: #FEE2E2; color: #DC2626; }
 
-/* Ghost Streamlit buttons â invisible, triggered via JS */
+/* Ghost Streamlit buttons — invisible, triggered via JS */
 [class*="st-key-icon_"] {
     height: 0 !important;
     overflow: hidden !important;
@@ -258,7 +258,7 @@ html, body, [class*="css"] {
     line-height: 0 !important;
 }
 
-/* ââ Normalize filter-row widget heights ââ */
+/* ── Normalize filter-row widget heights ── */
 [data-testid="stMultiSelect"] > div,
 [data-testid="stTextInput"] input,
 [data-testid="stDateInput"] input {
@@ -281,7 +281,7 @@ html, body, [class*="css"] {
     border-color: #e2e8f0 !important;
 }
 
-/* ââ Responsive Streamlit columns: no wrap at any zoom ââ */
+/* ── Responsive Streamlit columns: no wrap at any zoom ── */
 [data-testid="stHorizontalBlock"] {
     flex-wrap: nowrap !important;
     gap: 0.5rem !important;
@@ -291,7 +291,7 @@ html, body, [class*="css"] {
     flex: 1 1 0 !important;
 }
 
-/* ââ Responsive deal card: shrink labels on small screens ââ */
+/* ── Responsive deal card: shrink labels on small screens ── */
 @media (max-width: 900px) {
     .deal-card {
         gap: 6px;
@@ -321,7 +321,7 @@ doc.addEventListener('focusin', function(e) {
     }
 });
 
-// ââ Ghost button bridge ââ
+// ── Ghost button bridge ──
 // Defines window.__triggerDeal() on the Streamlit parent window.
 // HTML deal cards call this via onclick; it clicks the hidden Streamlit button.
 function registerTrigger() {
