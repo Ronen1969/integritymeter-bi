@@ -248,14 +248,13 @@ html, body, [class*="css"] {
 .deal-action-btn:hover { background: #E5E7EB; color: #374151; }
 .deal-action-del:hover { background: #FEE2E2; color: #DC2626; }
 
-/* Ghost Streamlit buttons — invisible, triggered via JS */
-[class*="st-key-icon_"] {
-    height: 0 !important;
-    overflow: hidden !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    line-height: 0 !important;
+/* ── Action buttons below deal card ── */
+[class*="st-key-pe_"] button,
+[class*="st-key-pd_"] button,
+[class*="st-key-pno_"] button {
+    min-height: 32px !important;
+    padding: 2px 8px !important;
+    font-size: 12px !important;
 }
 
 /* ── Normalize filter-row widget heights ── */
@@ -288,7 +287,7 @@ html, body, [class*="css"] {
 }
 [data-testid="stColumn"] {
     min-width: 0 !important;
-    flex: 1 1 0 !important;
+    overflow: hidden !important;
 }
 
 /* ── Responsive deal card: shrink labels on small screens ── */
@@ -310,40 +309,13 @@ html, body, [class*="css"] {
 """, unsafe_allow_html=True)
 
     # Auto-select number inputs on focus
-    # Inject __triggerDeal on parent window so HTML card onclick buttons work
     components.html("""
 <script>
 var doc = window.parent.document;
-
 doc.addEventListener('focusin', function(e) {
     if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'number') {
         setTimeout(function() { e.target.select(); }, 50);
     }
 });
-
-// ── Ghost button bridge ──
-// Defines window.__triggerDeal() on the Streamlit parent window.
-// HTML deal cards call this via onclick; it clicks the hidden Streamlit button.
-function registerTrigger() {
-    window.parent.__triggerDeal = function(dealId, action) {
-        var key = 'icon_' + action + '_' + dealId;
-        var container = doc.querySelector('[class*="st-key-' + key + '"]');
-        if (container) {
-            var btn = container.querySelector('button');
-            if (btn) btn.click();
-        }
-    };
-}
-registerTrigger();
-
-// Re-register + disable zero-height iframes on every DOM mutation
-new MutationObserver(function() {
-    registerTrigger();
-    doc.querySelectorAll('iframe').forEach(function(f) {
-        if (f.height === '0' || f.style.height === '0px' || f.getBoundingClientRect().height < 2) {
-            f.style.pointerEvents = 'none';
-        }
-    });
-}).observe(doc.body, {childList: true, subtree: true});
 </script>
 """, height=0)
