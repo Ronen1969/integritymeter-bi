@@ -153,8 +153,8 @@ html, body, [class*="css"] {
     font-size: 13px;
 }
 .alert-warning { background: #FFF7ED; border: 1px solid #FDBA74; color: #9A3412; }
-.alert-danger  { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
-.alert-info    { background: #EFF6FF; border: 1px solid #93C5FD; color: #1E40AF; }
+.alert-danger   { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
+.alert-info     { background: #EFF6FF; border: 1px solid #93C5FD; color: #1E40AF; }
 
 .target-progress {
     background: #f1f5f9;
@@ -199,10 +199,11 @@ html, body, [class*="css"] {
     border: 1px solid #E8ECF0;
     margin: 3px 0;
     background: #FFFFFF;
-    gap: 12px;
-    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    gap: 10px;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
     position: relative;
     min-height: 56px;
+    flex-wrap: nowrap;
 }
 .deal-card:hover {
     box-shadow: 0 2px 12px rgba(0,0,0,0.07);
@@ -214,26 +215,25 @@ html, body, [class*="css"] {
     font-size: 13px;
     line-height: 1.3;
     color: #111827;
+    white-space: nowrap;
 }
+
+/* ââ Action buttons â always visible ââ */
 .deal-actions {
     display: flex;
-    gap: 1px;
-    opacity: 0;
-    transition: opacity 0.12s ease;
-    flex-shrink: 0;
-    margin-left: 6px;
-}
-.deal-card:hover .deal-actions {
+    gap: 3px;
     opacity: 1;
+    flex-shrink: 0;
+    margin-left: 4px;
 }
 .deal-action-btn {
-    background: transparent;
+    background: #F3F4F6;
     border: none;
     outline: none;
     cursor: pointer;
-    width: 26px;
-    height: 26px;
-    border-radius: 5px;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
     font-size: 13px;
     display: inline-flex;
     align-items: center;
@@ -243,15 +243,10 @@ html, body, [class*="css"] {
     padding: 0;
     line-height: 1;
     font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif;
+    flex-shrink: 0;
 }
-.deal-action-btn:hover {
-    background: #EEF2F7;
-    color: #374151;
-}
-.deal-action-del:hover {
-    background: #FEE2E2;
-    color: #DC2626;
-}
+.deal-action-btn:hover { background: #E5E7EB; color: #374151; }
+.deal-action-del:hover { background: #FEE2E2; color: #DC2626; }
 
 /* Ghost Streamlit buttons â invisible, triggered via JS */
 [class*="st-key-icon_"] {
@@ -276,7 +271,6 @@ html, body, [class*="css"] {
     border-radius: 8px !important;
     border-color: #e2e8f0 !important;
 }
-/* Fix: multiselect inner value-container clips placeholder text via overflow:hidden. */
 [data-testid="stMultiSelect"] [data-baseweb="select"] > div > div:first-child,
 [data-testid="stMultiSelect"] [data-baseweb="select"] > div > div:first-child > div {
     overflow: visible !important;
@@ -295,6 +289,22 @@ html, body, [class*="css"] {
 [data-testid="stColumn"] {
     min-width: 0 !important;
     flex: 1 1 0 !important;
+}
+
+/* ââ Responsive deal card: shrink labels on small screens ââ */
+@media (max-width: 900px) {
+    .deal-card {
+        gap: 6px;
+        padding: 8px 10px;
+    }
+    .deal-mv {
+        font-size: 12px;
+    }
+    .deal-action-btn {
+        width: 26px;
+        height: 26px;
+        font-size: 12px;
+    }
 }
 </style>
 """, unsafe_allow_html=True)
