@@ -13,6 +13,33 @@ from models import status_dot_text, status_key_to_label
 def render_reports(all_deals: list) -> None:
     st.header("Relatórios")
 
+    # ── Date range filter ────────────────────────────────────────────────────
+    col_f1, col_f2 = st.columns(2)
+    filter_start = col_f1.date_input(
+        "De:",
+        value=date(date.today().year, 1, 1),
+        format="DD/MM/YYYY",
+        key="report_start",
+    )
+    filter_end = col_f2.date_input(
+        "Até:",
+        value=date.today(),
+        format="DD/MM/YYYY",
+        key="report_end",
+    )
+
+    def _in_range(d: dict) -> bool:
+        try:
+            return filter_start <= datetime.fromisoformat(d['created_at'][:10]).date() <= filter_end
+        except (ValueError, TypeError, KeyError):
+            return True
+
+    filtered_deals = [d for d in all_deals if _in_range(d)]
+
+    if not filtered_deals and all_deals:
+        st.warning("Nenhum negócio encontrado no período selecionado.")
+        return
+
     report_type = st.radio(
         "Tipo de Relatório:",
         ["Negócios Concluídos", "Rentabilidade por Cliente", "Todos os Negócios"],
@@ -20,11 +47,11 @@ def render_reports(all_deals: list) -> None:
     )
 
     if report_type == "Negócios Concluídos":
-        _render_closed(all_deals)
+        _render_closed(filtered_deals)
     elif report_type == "Rentabilidade por Cliente":
-        _render_by_client(all_deals)
+        _render_by_client(filtered_deals)
     elif report_type == "Todos os Negócios":
-        _render_all(all_deals)
+        _render_all(filtered_deals)
 
 
 # ── Sub-reports ───────────────────────────────────────────────────────────────
