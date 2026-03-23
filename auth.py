@@ -179,7 +179,9 @@ def render_login() -> None:
     """Render the login screen. Call st.stop() after this if user is not logged in."""
     _, col, _ = st.columns([1, 1.5, 1])
     with col:
-        logo_path = os.path.expanduser("~/Desktop/integrity-meter-logo.png")
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'logo.png')
+        if not os.path.exists(logo_path):
+            logo_path = os.path.expanduser("~/Desktop/integrity-meter-logo.png")
         if os.path.exists(logo_path):
             st.image(logo_path, width=250)
         else:
@@ -198,5 +200,21 @@ def render_login() -> None:
                     st.error(f"Falha no login: {error}")
             else:
                 st.warning("Preencha email e senha.")
+
+        with st.expander("Esqueci minha senha"):
+            reset_email = st.text_input(
+                "Digite seu email para recuperação",
+                placeholder="seu@email.com",
+                key="reset_email_input",
+            )
+            if st.button("Enviar link de recuperação", key="send_reset_btn", use_container_width=True):
+                if reset_email.strip():
+                    try:
+                        sb.auth.reset_password_for_email(reset_email.strip())
+                        st.success("Email de recuperação enviado! Verifique sua caixa de entrada.")
+                    except Exception as e:
+                        st.error(f"Erro ao enviar email: {e}")
+                else:
+                    st.warning("Preencha o email.")
 
         st.caption("Acesso restrito a funcionários da IntegrityMeter.")
